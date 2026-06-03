@@ -934,6 +934,20 @@ function renderEngineerChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            onClick: (event, elements, chart) => {
+                if (elements.length > 0) {
+                    const engineerName = chart.data.labels[elements[0].index];
+                    activeFilters['tmc_engineer'] = [engineerName];
+                    updateDropdownUI('tmc_engineer');
+                    applyFilters();
+                    const fp = document.getElementById('filter-panel');
+                    if (fp && fp.classList.contains('hidden')) toggleFilters();
+                    document.getElementById('zones-container').scrollIntoView({ behavior: 'smooth' });
+                }
+            },
+            onHover: (event, elements) => {
+                event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+            },
             plugins: { legend: { position: 'top' } },
             scales: {
                 x: {
