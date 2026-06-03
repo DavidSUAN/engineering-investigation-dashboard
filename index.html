@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TMC空客组工程调查看板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif; }
+
+        .zone-red { border-left: 4px solid #ef4444; }
+        .zone-orange { border-left: 4px solid #f97316; }
+        .zone-yellow { border-left: 4px solid #eab308; }
+        .zone-green { border-left: 4px solid #22c55e; }
+
+        .badge-red { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        .badge-orange { background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; }
+        .badge-yellow { background: #fefce8; color: #ca8a04; border: 1px solid #fef08a; }
+        .badge-green { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+
+        .status-investigating { background: #dbeafe; color: #2563eb; }
+        .status-dept { background: #e0e7ff; color: #4f46e5; }
+        .status-wg { background: #fae8ff; color: #a855f7; }
+        .status-reliability { background: #d1fae5; color: #059669; }
+
+        .upload-zone { border: 2px dashed #cbd5e1; transition: all 0.2s; }
+        .upload-zone:hover, .upload-zone.dragover { border-color: #3b82f6; background: #eff6ff; }
+
+        .item-card { transition: all 0.15s; }
+        .item-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-1px); }
+
+        .flow-step { display: flex; align-items: center; }
+        .flow-dot { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+        .flow-dot.done { background: #3b82f6; color: white; }
+        .flow-dot.current { background: #3b82f6; color: white; box-shadow: 0 0 0 4px rgba(59,130,246,0.2); }
+        .flow-dot.pending { background: #e5e7eb; color: #9ca3af; }
+        .flow-line { height: 2px; flex: 1; min-width: 20px; }
+        .flow-line.done { background: #3b82f6; }
+        .flow-line.pending { background: #e5e7eb; }
+
+        .dropdown-panel { max-height: 240px; overflow-y: auto; }
+        .dropdown-option { padding: 6px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .dropdown-option:hover { background: #f1f5f9; }
+        .dropdown-option input[type="checkbox"] { accent-color: #3b82f6; }
+
+        .fade-in { animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .detail-section { border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+        .detail-section-header { background: #f8fafc; padding: 12px 16px; font-weight: 600; border-bottom: 1px solid #e2e8f0; }
+        .detail-row { display: grid; grid-template-columns: 140px 1fr; padding: 10px 16px; border-bottom: 1px solid #f1f5f9; }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { color: #64748b; font-size: 14px; }
+        .detail-value { font-size: 14px; color: #1e293b; word-break: break-all; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <!-- Upload Page -->
+    <div id="upload-page" class="min-h-screen flex items-center justify-center p-6">
+        <div class="max-w-lg w-full">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">TMC空客组工程调查看板</h1>
+                <p class="text-gray-500">请上传工程调查跟踪单 Excel 文件</p>
+            </div>
+            <div id="drop-zone" class="upload-zone rounded-xl p-12 text-center cursor-pointer bg-white"
+                 onclick="document.getElementById('file-input').click()">
+                <svg class="mx-auto mb-4" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                </svg>
+                <p class="text-gray-600 mb-1">拖拽 Excel 文件到此处</p>
+                <p class="text-gray-400 text-sm">或点击选择文件 (.xlsx)</p>
+            </div>
+            <input type="file" id="file-input" accept=".xlsx,.xls" class="hidden">
+            <div id="upload-error" class="hidden mt-4 text-center text-red-500 text-sm"></div>
+        </div>
+    </div>
+
+    <!-- Dashboard Page -->
+    <div id="dashboard-page" class="hidden">
+        <!-- Header -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-30">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+                <h1 class="text-lg font-bold text-gray-800">TMC空客组工程调查看板</h1>
+                <div class="flex items-center gap-3">
+                    <span id="data-info" class="text-sm text-gray-400"></span>
+                    <button onclick="document.getElementById('file-input').click()"
+                            class="text-sm px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                        重新上传
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+            <!-- Stat Cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-blue-500">
+                    <div class="text-sm text-gray-500 mb-1">进行中</div>
+                    <div id="stat-active" class="text-3xl font-bold text-blue-600">0</div>
+                    <div class="text-xs text-gray-400 mt-1">未完成调查总数</div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-red-500">
+                    <div class="text-sm text-gray-500 mb-1">超期</div>
+                    <div id="stat_overdue" class="text-3xl font-bold text-red-600">0</div>
+                    <div class="text-xs text-gray-400 mt-1">超过12天</div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-orange-500">
+                    <div class="text-sm text-gray-500 mb-1">即将超期</div>
+                    <div id="stat_warning" class="text-3xl font-bold text-orange-600">0</div>
+                    <div class="text-xs text-gray-400 mt-1">10-12天</div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-green-500">
+                    <div class="text-sm text-gray-500 mb-1">正常</div>
+                    <div id="stat_normal" class="text-3xl font-bold text-green-600">0</div>
+                    <div class="text-xs text-gray-400 mt-1">9天以内</div>
+                </div>
+            </div>
+
+            <!-- Filter Panel -->
+            <div class="bg-white rounded-xl shadow-sm">
+                <div class="px-5 py-3 flex items-center justify-between cursor-pointer select-none" onclick="toggleFilters()">
+                    <span class="font-semibold text-gray-700 text-sm">筛选条件</span>
+                    <svg id="filter-chevron" class="w-5 h-5 text-gray-400 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </div>
+                <div id="filter-panel" class="hidden px-5 pb-4">
+                    <div id="filter-container" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3"></div>
+                    <div class="mt-3 flex items-center gap-3">
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm text-gray-500">开始日期:</label>
+                            <input type="date" id="date-from" class="text-sm border border-gray-300 rounded-lg px-2 py-1.5" onchange="applyFilters()">
+                            <span class="text-gray-400">-</span>
+                            <input type="date" id="date-to" class="text-sm border border-gray-300 rounded-lg px-2 py-1.5" onchange="applyFilters()">
+                        </div>
+                        <button onclick="resetFilters()" class="text-sm px-3 py-1.5 text-gray-500 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                            重置筛选
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Four Color Zones -->
+            <div id="zones-container" class="space-y-4"></div>
+
+            <!-- Export Button -->
+            <div class="flex justify-end pb-6">
+                <button onclick="exportData()"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    导出筛选结果
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Detail Page -->
+    <div id="detail-page" class="hidden">
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-30">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
+                <button onclick="showDashboard()" class="text-gray-500 hover:text-gray-700 flex items-center gap-1 text-sm">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                    返回总览
+                </button>
+                <span class="text-gray-300">|</span>
+                <span id="detail-header-title" class="text-sm font-medium text-gray-700"></span>
+            </div>
+        </header>
+        <main class="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-5 fade-in" id="detail-content"></main>
+    </div>
+
+    <!-- Click outside dropdown handler -->
+    <div id="dropdown-overlay" class="fixed inset-0 z-10 hidden" onclick="closeAllDropdowns()"></div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let allData = [];
+let filteredData = [];
+let uniqueValues = {};
+let activeFilters = {};
+let filtersVisible = false;
+
+// ============================================================
+// CONFIGURATION
+// ============================================================
+const COL_MAP = {
+    A: 'raw_status', B: 'source_label', C: 'source', D: 'source_other',
+    E: 'fleet', F: 'ac', G: 'base', H: 'fault_date', I: 'ata',
+    J: 'fault_des', K: 'investigation_days', L: 'tmc_engineer',
+    M: 'base_engineer', N: 'start_date', O: 'end_date', P: 'count',
+    Q: 'report_title', R: 'dept_discussion', S: 'fault_classification',
+    T: 'reliability_level', U: 'wg_date', V: 'wg_decision',
+    W: 'wg_tracking', X: 'report_score', Y: 'reliability_date',
+    Z: 'measure_status', AA: 'completion_status',
+    AB: 'kw_ecam', AC: 'kw_fault_msg', AD: 'kw_fault_source_confirm',
+    AE: 'kw_fault_source1_name', AF: 'kw_fault_source1_pn',
+    AG: 'kw_fault_source2_name', AH: 'kw_fault_source2_pn',
+    AI: 'kw_fault_source3_name', AJ: 'kw_fault_source3_pn'
+};
+
+const FILTER_CONFIG = [
+    { key: 'source', label: '故障类型' },
+    { key: 'fleet', label: '机型' },
+    { key: 'ac', label: '飞机注册号', searchable: true },
+    { key: 'base', label: '执管基地' },
+    { key: 'ata', label: 'ATA章节' },
+    { key: 'tmc_engineer', label: 'TMC工程师' }
+];
+
+const ZONE_CONFIG = [
+    { key: 'red', label: '超期', condition: '>9天', icon: '🔴', cssClass: 'zone-red', badgeClass: 'badge-red' },
+    { key: 'orange', label: '关注', condition: '6-8天', icon: '🟠', cssClass: 'zone-orange', badgeClass: 'badge-orange' },
+    { key: 'yellow', label: '注意', condition: '3-5天', icon: '🟡', cssClass: 'zone-yellow', badgeClass: 'badge-yellow' },
+    { key: 'green', label: '正常', condition: '0-2天', icon: '🟢', cssClass: 'zone-green', badgeClass: 'badge-green' }
+];
+
+const STATUS_LABELS = {
+    '调查中': 'investigating',
+    '科室讨论': 'dept',
+    'WG周会': 'wg',
+    '可靠性周会': 'reliability'
+};
+
+const STATUS_FLOW = ['调查中', '科室讨论', 'WG周会', '可靠性周会'];
+
+const SOURCE_MEANINGS = {
+    'G': '出勤故障', 'W': '世界机队', 'S': 'SDR事件', 'M': '重要故障',
+    'P': '机组关注', 'R': '重复故障', 'OTHER': '其他'
+};
+
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
+function parseDate(val) {
+    if (!val || val === '/' || val === 'N/A') return null;
+    if (val instanceof Date && !isNaN(val)) return val;
+    if (typeof val === 'number') {
+        const d = XLSX.SSF.parse_date_code(val);
+        if (d) return new Date(d.y, d.m - 1, d.d);
+    }
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+}
+
+function formatDate(d) {
+    if (!d) return '-';
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function calcDays(start) {
+    if (!start) return null;
+    const now = new Date();
+    now.setHours(0,0,0,0);
+    const s = new Date(start);
+    if (isNaN(s.getTime())) return null;
+    s.setHours(0,0,0,0);
+    return Math.max(0, Math.floor((now - s) / 86400000));
+}
+
+function getStatus(row) {
+    if (hasVal(row.reliability_date)) return '可靠性周会';
+    if (hasVal(row.wg_decision)) return 'WG周会';
+    if (hasVal(row.dept_discussion)) return '科室讨论';
+    return '调查中';
+}
+
+function getColorZone(days) {
+    if (days === null) return null;
+    if (days > 9) return 'red';
+    if (days >= 6) return 'orange';
+    if (days >= 3) return 'yellow';
+    return 'green';
+}
+
+function getOverdueCategory(days) {
+    if (days === null) return null;
+    if (days > 12) return 'overdue';
+    if (days >= 10) return 'warning';
+    return 'normal';
+}
+
+function hasVal(v) {
+    return v !== null && v !== undefined && String(v).trim() !== '' && String(v) !== '/' && String(v) !== 'N/A' && String(v) !== 'NULL';
+}
+
+function truncate(s, n) {
+    if (!s) return '-';
+    return s.length > n ? s.substring(0, n) + '...' : s;
+}
+
+function decodeSource(src) {
+    if (!src) return '-';
+    if (src === 'OTHER') return '其他';
+    return src.split('/').map(c => SOURCE_MEANINGS[c.trim()] || c.trim()).join('/');
+}
+
+function getStatusBadgeClass(status) {
+    const map = { '调查中': 'status-investigating', '科室讨论': 'status-dept', 'WG周会': 'status-wg', '可靠性周会': 'status-reliability' };
+    return map[status] || 'bg-gray-100 text-gray-600';
+}
+
+// ============================================================
+// FILE UPLOAD
+// ============================================================
+let dropZone, fileInput;
+
+function initUpload() {
+    dropZone = document.getElementById('drop-zone');
+    fileInput = document.getElementById('file-input');
+
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', e => {
+        if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+}
+
+function handleFile(file) {
+    const errEl = document.getElementById('upload-error');
+    errEl.classList.add('hidden');
+
+    if (!file.name.match(/\.xlsx?$/i)) {
+        errEl.textContent = '请上传 .xlsx 格式的 Excel 文件';
+        errEl.classList.remove('hidden');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = e => {
+        try {
+            parseExcel(e.target.result);
+        } catch (err) {
+            errEl.textContent = '文件解析失败: ' + err.message;
+            errEl.classList.remove('hidden');
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function parseExcel(buffer) {
+    const wb = XLSX.read(buffer, { cellDates: true });
+    const ws = wb.Sheets['调查项目清单'];
+    if (!ws) throw new Error('未找到"调查项目清单"工作表');
+
+    const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    allData = [];
+
+    for (let i = 1; i < raw.length; i++) {
+        const row = raw[i];
+        if (!row || row.length === 0) continue;
+
+        const obj = {};
+        const keys = Object.keys(COL_MAP);
+        for (let k = 0; k < keys.length; k++) {
+            obj[COL_MAP[keys[k]]] = row[k] ?? '';
+        }
+
+        const startDate = parseDate(obj.start_date);
+        const faultDate = parseDate(obj.fault_date);
+        const days = calcDays(startDate);
+        const status = getStatus(obj);
+
+        if (!hasVal(obj.fleet) && !hasVal(obj.fault_des)) continue;
+
+        obj._startDate = startDate;
+        obj._faultDate = faultDate;
+        obj._days = days;
+        obj._status = status;
+        obj._colorZone = getColorZone(days);
+        obj._overdue = getOverdueCategory(days);
+        obj._index = i;
+
+        allData.push(obj);
+    }
+
+    extractUniqueValues();
+    buildFilters();
+    showDashboardPage();
+    resetFilters();
+}
+
+// ============================================================
+// DATA PROCESSING
+// ============================================================
+function extractUniqueValues() {
+    uniqueValues = {};
+    for (const f of FILTER_CONFIG) {
+        const vals = new Set();
+        for (const item of allData) {
+            const v = item[f.key];
+            if (hasVal(v)) vals.add(String(v).trim());
+        }
+        uniqueValues[f.key] = [...vals].sort();
+    }
+}
+
+function applyFilters() {
+    filteredData = allData.filter(item => {
+        for (const f of FILTER_CONFIG) {
+            const selected = activeFilters[f.key];
+            if (selected && selected.length > 0) {
+                const val = String(item[f.key] || '').trim();
+                if (!selected.includes(val)) return false;
+            }
+        }
+
+        const dateFrom = document.getElementById('date-from').value;
+        const dateTo = document.getElementById('date-to').value;
+        if (dateFrom && item._startDate) {
+            if (item._startDate < new Date(dateFrom)) return false;
+        }
+        if (dateTo && item._startDate) {
+            if (item._startDate > new Date(dateTo + 'T23:59:59')) return false;
+        }
+
+        return true;
+    });
+
+    renderStats();
+    renderZones();
+}
+
+function resetFilters() {
+    activeFilters = {};
+    for (const f of FILTER_CONFIG) {
+        activeFilters[f.key] = [];
+        updateDropdownUI(f.key);
+    }
+    document.getElementById('date-from').value = '';
+    document.getElementById('date-to').value = '';
+    applyFilters();
+}
+
+// ============================================================
+// FILTER UI
+// ============================================================
+function buildFilters() {
+    const container = document.getElementById('filter-container');
+    container.innerHTML = '';
+
+    for (const f of FILTER_CONFIG) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'relative';
+        wrapper.id = `filter-${f.key}`;
+
+        const btn = document.createElement('button');
+        btn.className = 'w-full text-left px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white hover:border-gray-400 transition flex items-center justify-between';
+        btn.onclick = (e) => { e.stopPropagation(); toggleDropdown(f.key); };
+
+        const labelSpan = document.createElement('span');
+        labelSpan.id = `label-${f.key}`;
+        labelSpan.className = 'truncate text-gray-600';
+        labelSpan.textContent = f.label;
+
+        const chevron = document.createElement('svg');
+        chevron.className = 'w-4 h-4 text-gray-400 flex-shrink-0';
+        chevron.setAttribute('fill', 'none');
+        chevron.setAttribute('viewBox', '0 0 24 24');
+        chevron.setAttribute('stroke', 'currentColor');
+        chevron.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>';
+
+        btn.appendChild(labelSpan);
+        btn.appendChild(chevron);
+        wrapper.appendChild(btn);
+
+        const panel = document.createElement('div');
+        panel.id = `panel-${f.key}`;
+        panel.className = 'hidden absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20';
+
+        let html = '';
+        if (f.searchable) {
+            html += `<div class="p-2 border-b border-gray-100">
+                <input type="text" placeholder="搜索..." class="w-full px-2 py-1 border border-gray-200 rounded text-sm"
+                       oninput="filterDropdownOptions('${f.key}', this.value)" onclick="event.stopPropagation()">
+            </div>`;
+        }
+        html += `<div class="dropdown-panel p-1" id="options-${f.key}">`;
+        for (const val of uniqueValues[f.key]) {
+            html += `<label class="dropdown-option" data-value="${val}">
+                <input type="checkbox" value="${val}" onchange="onFilterChange('${f.key}')">
+                <span class="text-sm truncate">${val}</span>
+            </label>`;
+        }
+        html += '</div>';
+        panel.innerHTML = html;
+        wrapper.appendChild(panel);
+        container.appendChild(wrapper);
+    }
+}
+
+function toggleDropdown(key) {
+    const panel = document.getElementById(`panel-${key}`);
+    const overlay = document.getElementById('dropdown-overlay');
+    const isOpen = !panel.classList.contains('hidden');
+
+    closeAllDropdowns();
+
+    if (!isOpen) {
+        panel.classList.remove('hidden');
+        overlay.classList.remove('hidden');
+    }
+}
+
+function closeAllDropdowns() {
+    document.getElementById('dropdown-overlay').classList.add('hidden');
+    for (const f of FILTER_CONFIG) {
+        document.getElementById(`panel-${f.key}`).classList.add('hidden');
+    }
+}
+
+function filterDropdownOptions(key, query) {
+    const options = document.getElementById(`options-${key}`).querySelectorAll('.dropdown-option');
+    const q = query.toLowerCase();
+    options.forEach(opt => {
+        opt.style.display = opt.dataset.value.toLowerCase().includes(q) ? '' : 'none';
+    });
+}
+
+function onFilterChange(key) {
+    const checkboxes = document.getElementById(`options-${key}`).querySelectorAll('input[type="checkbox"]:checked');
+    activeFilters[key] = [...checkboxes].map(cb => cb.value);
+    updateDropdownUI(key);
+    applyFilters();
+}
+
+function updateDropdownUI(key) {
+    const label = document.getElementById(`label-${key}`);
+    const config = FILTER_CONFIG.find(f => f.key === key);
+    const selected = activeFilters[key] || [];
+
+    if (selected.length === 0) {
+        label.textContent = config.label;
+        label.className = 'truncate text-gray-600';
+    } else {
+        label.textContent = `${config.label} (${selected.length})`;
+        label.className = 'truncate text-blue-600 font-medium';
+    }
+
+    const checkboxes = document.getElementById(`options-${key}`).querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(cb => { cb.checked = selected.includes(cb.value); });
+}
+
+function toggleFilters() {
+    filtersVisible = !filtersVisible;
+    const panel = document.getElementById('filter-panel');
+    const chevron = document.getElementById('filter-chevron');
+    if (filtersVisible) {
+        panel.classList.remove('hidden');
+        chevron.style.transform = 'rotate(180deg)';
+    } else {
+        panel.classList.add('hidden');
+        chevron.style.transform = '';
+    }
+}
+
+// ============================================================
+// RENDERING - STATS
+// ============================================================
+function renderStats() {
+    const active = filteredData.filter(d => d._status !== '可靠性周会').length;
+    const overdue = filteredData.filter(d => d._overdue === 'overdue').length;
+    const warning = filteredData.filter(d => d._overdue === 'warning').length;
+    const normal = filteredData.filter(d => d._overdue === 'normal').length;
+
+    const el = (id) => { const e = document.getElementById(id); if (!e) console.error('Missing element:', id); return e; };
+    const sa = el('stat-active'); if (sa) sa.textContent = active;
+    const so = el('stat-overdue'); if (so) so.textContent = overdue;
+    const sw = el('stat-warning'); if (sw) sw.textContent = warning;
+    const sn = el('stat-normal'); if (sn) sn.textContent = normal;
+    const di = el('data-info'); if (di) di.textContent = `共 ${filteredData.length} / ${allData.length} 条`;
+}
+
+// ============================================================
+// RENDERING - ZONES
+// ============================================================
+function renderZones() {
+    const container = document.getElementById('zones-container');
+    container.innerHTML = '';
+
+    for (const zone of ZONE_CONFIG) {
+        const items = filteredData.filter(d => d._colorZone === zone.key);
+
+        const section = document.createElement('div');
+        section.className = `bg-white rounded-xl shadow-sm ${zone.cssClass} fade-in`;
+
+        const header = document.createElement('div');
+        header.className = 'px-5 py-3 flex items-center justify-between cursor-pointer select-none';
+        header.onclick = () => {
+            const list = section.querySelector('.zone-list');
+            list.classList.toggle('hidden');
+        };
+
+        header.innerHTML = `
+            <div class="flex items-center gap-2">
+                <span class="text-lg">${zone.icon}</span>
+                <span class="font-semibold text-gray-700">${zone.label}</span>
+                <span class="text-sm text-gray-400">(${zone.condition})</span>
+                <span class="text-sm font-medium px-2 py-0.5 rounded-full ${zone.badgeClass}">${items.length} 项</span>
+            </div>
+            <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+        `;
+        section.appendChild(header);
+
+        const list = document.createElement('div');
+        list.className = 'zone-list px-5 pb-4';
+
+        if (items.length === 0) {
+            list.innerHTML = '<div class="text-center text-gray-400 text-sm py-6">暂无数据</div>';
+        } else {
+            const grid = document.createElement('div');
+            grid.className = 'grid gap-2';
+
+            for (const item of items) {
+                grid.appendChild(createItemCard(item, zone));
+            }
+            list.appendChild(grid);
+        }
+
+        section.appendChild(list);
+        container.appendChild(section);
+    }
+}
+
+function createItemCard(item, zone) {
+    const card = document.createElement('div');
+    card.className = 'item-card border border-gray-100 rounded-lg p-3 cursor-pointer hover:border-gray-300';
+    card.onclick = () => showDetail(item._index);
+
+    const daysText = item._days !== null ? `${item._days}天` : '-';
+    const overdueLabel = item._overdue === 'overdue' ? '<span class="text-xs px-1.5 py-0.5 rounded badge-red font-medium">超期</span>' :
+                         item._overdue === 'warning' ? '<span class="text-xs px-1.5 py-0.5 rounded badge-orange font-medium">即将超期</span>' : '';
+
+    card.innerHTML = `
+        <div class="flex items-start justify-between gap-3">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap mb-1.5">
+                    <span class="font-semibold text-gray-800 text-sm">${item.ac || '-'}</span>
+                    <span class="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">${item.fleet || '-'}</span>
+                    <span class="text-xs text-gray-500">${item.base || '-'}</span>
+                    <span class="text-xs text-gray-500">ATA ${item.ata || '-'}</span>
+                    <span class="text-xs px-1.5 py-0.5 rounded ${getStatusBadgeClass(item._status)}">${item._status}</span>
+                    ${overdueLabel}
+                </div>
+                <div class="text-sm text-gray-600 line-clamp-2" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
+                    ${truncate(item.fault_des, 120)}
+                </div>
+            </div>
+            <div class="text-right flex-shrink-0">
+                <div class="text-lg font-bold ${item._days > 9 ? 'text-red-600' : item._days >= 6 ? 'text-orange-600' : item._days >= 3 ? 'text-yellow-600' : 'text-green-600'}">${daysText}</div>
+                <div class="text-xs text-gray-400">${item.tmc_engineer || '-'}</div>
+                <div class="text-xs text-gray-400">${formatDate(item._startDate)}</div>
+            </div>
+        </div>
+    `;
+    return card;
+}
+
+// ============================================================
+// DETAIL PAGE
+// ============================================================
+function showDetail(index) {
+    const item = allData.find(d => d._index === index);
+    if (!item) return;
+
+    document.getElementById('detail-header-title').textContent =
+        `${item.ac || '-'} | ${item.fleet || '-'} | ${item.report_title || '工程调查详情'}`;
+
+    const container = document.getElementById('detail-content');
+    const daysText = item._days !== null ? `${item._days}天` : '-';
+    const overdueCategory = item._overdue;
+
+    // Flow progress
+    const currentStatusIdx = STATUS_FLOW.indexOf(item._status);
+    let flowHtml = '<div class="flex items-center justify-center py-4">';
+    STATUS_FLOW.forEach((step, i) => {
+        const isDone = i < currentStatusIdx;
+        const isCurrent = i === currentStatusIdx;
+        const dotClass = isDone ? 'done' : isCurrent ? 'current' : 'pending';
+        const icon = isDone ? '✓' : (i + 1);
+
+        flowHtml += `<div class="flex flex-col items-center">
+            <div class="flow-dot ${dotClass}">${icon}</div>
+            <span class="text-xs mt-1.5 ${isCurrent ? 'text-blue-600 font-medium' : isDone ? 'text-gray-600' : 'text-gray-400'}">${step}</span>
+        </div>`;
+        if (i < STATUS_FLOW.length - 1) {
+            const lineClass = i < currentStatusIdx ? 'done' : 'pending';
+            flowHtml += `<div class="flow-line ${lineClass} mb-5"></div>`;
+        }
+    });
+    flowHtml += '</div>';
+
+    // Build detail sections
+    container.innerHTML = `
+        <!-- Time & Status Banner -->
+        <div class="bg-white rounded-xl shadow-sm p-5 flex items-center justify-between flex-wrap gap-4">
+            <div>
+                <div class="text-2xl font-bold text-gray-800">${item.ac || '-'} <span class="text-base font-normal text-gray-500">${item.fleet || ''}</span></div>
+                <div class="text-sm text-gray-500 mt-1">${item.base || '-'} | ATA ${item.ata || '-'}</div>
+            </div>
+            <div class="text-right">
+                <div class="text-3xl font-bold ${item._days > 9 ? 'text-red-600' : item._days >= 6 ? 'text-orange-600' : item._days >= 3 ? 'text-yellow-600' : 'text-green-600'}">${daysText}</div>
+                <div class="flex items-center gap-2 mt-1 justify-end">
+                    <span class="text-xs px-2 py-0.5 rounded ${getStatusBadgeClass(item._status)} font-medium">${item._status}</span>
+                    ${overdueCategory === 'overdue' ? '<span class="text-xs px-2 py-0.5 rounded badge-red font-medium">超期</span>' : ''}
+                    ${overdueCategory === 'warning' ? '<span class="text-xs px-2 py-0.5 rounded badge-orange font-medium">即将超期</span>' : ''}
+                </div>
+            </div>
+        </div>
+
+        <!-- Flow Progress -->
+        <div class="bg-white rounded-xl shadow-sm p-5">
+            <div class="text-sm font-semibold text-gray-700 mb-2">调查流程</div>
+            ${flowHtml}
+        </div>
+
+        <!-- Basic Info -->
+        <div class="detail-section bg-white">
+            <div class="detail-section-header">基本信息</div>
+            <div class="detail-row"><div class="detail-label">飞机注册号</div><div class="detail-value">${item.ac || '-'}</div></div>
+            <div class="detail-row"><div class="detail-label">机型</div><div class="detail-value">${item.fleet || '-'}</div></div>
+            <div class="detail-row"><div class="detail-label">执管基地</div><div class="detail-value">${item.base || '-'}</div></div>
+            <div class="detail-row"><div class="detail-label">故障日期</div><div class="detail-value">${formatDate(item._faultDate)}</div></div>
+            <div class="detail-row"><div class="detail-label">调查开始日期</div><div class="detail-value">${formatDate(item._startDate)}</div></div>
+            <div class="detail-row"><div class="detail-label">结束日期</div><div class="detail-value">${formatDate(parseDate(item.end_date))}</div></div>
+            <div class="detail-row"><div class="detail-label">故障来源</div><div class="detail-value">${item.source || '-'} (${decodeSource(item.source)})</div></div>
+            ${hasVal(item.source_other) ? `<div class="detail-row"><div class="detail-label">来源备注</div><div class="detail-value">${item.source_other}</div></div>` : ''}
+        </div>
+
+        <!-- Fault Info -->
+        <div class="detail-section bg-white">
+            <div class="detail-section-header">故障信息</div>
+            <div class="detail-row"><div class="detail-label">ATA章节</div><div class="detail-value">${item.ata || '-'}</div></div>
+            <div class="detail-row" style="grid-template-columns:140px 1fr"><div class="detail-label">故障描述</div><div class="detail-value whitespace-pre-wrap">${item.fault_des || '-'}</div></div>
+        </div>
+
+        <!-- Investigation Info -->
+        <div class="detail-section bg-white">
+            <div class="detail-section-header">调查信息</div>
+            <div class="detail-row"><div class="detail-label">TMC工程师</div><div class="detail-value">${item.tmc_engineer || '-'}</div></div>
+            <div class="detail-row"><div class="detail-label">基地工程师</div><div class="detail-value">${hasVal(item.base_engineer) ? item.base_engineer : '-'}</div></div>
+            <div class="detail-row"><div class="detail-label">报告标题</div><div class="detail-value">${hasVal(item.report_title) ? item.report_title : '-'}</div></div>
+            <div class="detail-row"><div class="detail-label">报告评分</div><div class="detail-value">${hasVal(item.report_score) ? item.report_score : '-'}</div></div>
+        </div>
+
+        <!-- Meeting Records -->
+        <div class="detail-section bg-white">
+            <div class="detail-section-header">会议记录</div>
+            <div class="detail-row"><div class="detail-label">科室讨论</div><div class="detail-value whitespace-pre-wrap">${hasVal(item.dept_discussion) ? item.dept_discussion : '-'}</div></div>
+            <div class="detail-row"><div class="detail-label">故障原因定性</div><div class="detail-value">${hasVal(item.fault_classification) ? item.fault_classification : '-'}</div></div>
+            <div class="detail-row"><div class="detail-label">可靠性周会级别</div><div class="detail-value whitespace-pre-wrap">${hasVal(item.reliability_level) ? item.reliability_level : '-'}</div></div>
+            <div class="detail-row"><div class="detail-label">WG日期</div><div class="detail-value">${formatDate(parseDate(item.wg_date))}</div></div>
+            <div class="detail-row"><div class="detail-label">WG会议决议</div><div class="detail-value whitespace-pre-wrap">${hasVal(item.wg_decision) ? item.wg_decision : '-'}</div></div>
+            <div class="detail-row"><div class="detail-label">WG跟踪事项</div><div class="detail-value whitespace-pre-wrap">${hasVal(item.wg_tracking) ? item.wg_tracking : '-'}</div></div>
+            <div class="detail-row"><div class="detail-label">可靠性周会日期</div><div class="detail-value">${formatDate(parseDate(item.reliability_date))}</div></div>
+            <div class="detail-row"><div class="detail-label">措施完成情况</div><div class="detail-value whitespace-pre-wrap">${hasVal(item.measure_status) ? item.measure_status : '-'}</div></div>
+            <div class="detail-row"><div class="detail-label">完成状态</div><div class="detail-value">${hasVal(item.completion_status) ? item.completion_status : '-'}</div></div>
+        </div>
+
+        <!-- Keywords -->
+        ${(hasVal(item.kw_ecam) || hasVal(item.kw_fault_msg) || hasVal(item.kw_fault_source_confirm)) ? `
+        <div class="detail-section bg-white">
+            <div class="detail-section-header">关键字信息</div>
+            <div class="detail-row"><div class="detail-label">ECAM警告</div><div class="detail-value">${hasVal(item.kw_ecam) ? item.kw_ecam : '-'}</div></div>
+            <div class="detail-row"><div class="detail-label">故障信息</div><div class="detail-value">${hasVal(item.kw_fault_msg) ? item.kw_fault_msg : '-'}</div></div>
+            <div class="detail-row"><div class="detail-label">是否确定故障源</div><div class="detail-value">${hasVal(item.kw_fault_source_confirm) ? item.kw_fault_source_confirm : '-'}</div></div>
+            <div class="detail-row"><div class="detail-label">故障源1</div><div class="detail-value">${hasVal(item.kw_fault_source1_name) ? item.kw_fault_source1_name + (hasVal(item.kw_fault_source1_pn) ? ' (' + item.kw_fault_source1_pn + ')' : '') : '-'}</div></div>
+            <div class="detail-row"><div class="detail-label">故障源2</div><div class="detail-value">${hasVal(item.kw_fault_source2_name) ? item.kw_fault_source2_name + (hasVal(item.kw_fault_source2_pn) ? ' (' + item.kw_fault_source2_pn + ')' : '') : '-'}</div></div>
+        </div>` : ''}
+    `;
+
+    // Show detail page
+    document.getElementById('upload-page').classList.add('hidden');
+    document.getElementById('dashboard-page').classList.add('hidden');
+    document.getElementById('detail-page').classList.remove('hidden');
+    window.scrollTo(0, 0);
+}
+
+// ============================================================
+// PAGE NAVIGATION
+// ============================================================
+function showDashboardPage() {
+    document.getElementById('upload-page').classList.add('hidden');
+    document.getElementById('detail-page').classList.add('hidden');
+    document.getElementById('dashboard-page').classList.remove('hidden');
+    window.scrollTo(0, 0);
+}
+
+function showDashboard() {
+    showDashboardPage();
+}
+
+// ============================================================
+// EXPORT
+// ============================================================
+function exportData() {
+    if (filteredData.length === 0) {
+        alert('当前筛选条件下没有数据可导出');
+        return;
+    }
+
+    const exportRows = filteredData.map(d => ({
+        '状态': d._status,
+        '故障来源': d.source,
+        '来源说明': decodeSource(d.source),
+        '机型': d.fleet,
+        '飞机注册号': d.ac,
+        '执管基地': d.base,
+        '故障日期': formatDate(d._faultDate),
+        'ATA章节': d.ata,
+        '故障描述': d.fault_des,
+        'TMC工程师': d.tmc_engineer,
+        '基地工程师': d.base_engineer,
+        '调查开始日期': formatDate(d._startDate),
+        '已过天数': d._days !== null ? d._days : '-',
+        '是否超期': d._overdue === 'overdue' ? '是' : '否',
+        '报告标题': d.report_title,
+        '科室讨论': d.dept_discussion,
+        '故障原因定性': d.fault_classification,
+        'WG会议决议': d.wg_decision,
+        'WG跟踪事项': d.wg_tracking,
+        '可靠性周会日期': formatDate(parseDate(d.reliability_date)),
+        '措施完成情况': d.measure_status,
+        '完成状态': d.completion_status
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportRows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '筛选结果');
+
+    const now = new Date();
+    const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+    XLSX.writeFile(wb, `工程调查看板_筛选结果_${ts}.xlsx`);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+    initUpload();
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closeAllDropdowns();
+    });
+});
+</script>
+</body>
+</html>
