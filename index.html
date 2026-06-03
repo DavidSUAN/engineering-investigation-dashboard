@@ -290,7 +290,9 @@ const FILTER_CONFIG = [
     { key: 'ac', label: '飞机注册号', searchable: true },
     { key: 'base', label: '执管基地' },
     { key: 'ata', label: 'ATA章节' },
-    { key: 'tmc_engineer', label: 'TMC工程师' }
+    { key: 'tmc_engineer', label: 'TMC工程师' },
+    { key: 'fault_classification', label: '故障原因' },
+    { key: '_has_todo', label: '待办事项', preset: true }
 ];
 
 const ZONE_CONFIG = [
@@ -560,6 +562,10 @@ function parseExcel(buffer) {
 function extractUniqueValues() {
     uniqueValues = {};
     for (const f of FILTER_CONFIG) {
+        if (f.preset) {
+            uniqueValues[f.key] = ['有', '无'];
+            continue;
+        }
         const vals = new Set();
         for (const item of allData) {
             const v = item[f.key];
@@ -574,8 +580,14 @@ function applyFilters() {
         for (const f of FILTER_CONFIG) {
             const selected = activeFilters[f.key];
             if (selected && selected.length > 0) {
-                const val = String(item[f.key] || '').trim();
-                if (!selected.includes(val)) return false;
+                if (f.key === '_has_todo') {
+                    const hasTodo = hasVal(item.wg_tracking);
+                    if (selected.includes('有') && !hasTodo) return false;
+                    if (selected.includes('无') && hasTodo) return false;
+                } else {
+                    const val = String(item[f.key] || '').trim();
+                    if (!selected.includes(val)) return false;
+                }
             }
         }
 
@@ -711,7 +723,7 @@ function updateDropdownUI(key) {
         label.textContent = config.label;
         label.className = 'truncate text-gray-600';
     } else {
-        label.textContent = `${config.label} (${selected.length})`;
+        label.textContent = selected.join('、');
         label.className = 'truncate text-blue-600 font-medium';
     }
 
@@ -994,6 +1006,8 @@ function renderHistory() {
         const card = document.createElement('div');
         card.className = 'item-card border border-gray-100 rounded-lg p-3 cursor-pointer hover:border-gray-300 opacity-70';
         card.onclick = () => showDetail(item._index);
+        const todoLabel = hasVal(item.wg_tracking) ? '<span class="text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200 font-medium">存在待办事项</span>' : '';
+        const faultLabel = hasVal(item.fault_classification) ? `<span class="text-xs px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 border border-sky-200 font-medium">${item.fault_classification}</span>` : '';
 
         card.innerHTML = `
             <div class="flex items-start justify-between gap-3">
@@ -1004,6 +1018,8 @@ function renderHistory() {
                         <span class="text-xs text-gray-500">${item.base || '-'}</span>
                         <span class="text-xs text-gray-500">ATA ${item.ata || '-'}</span>
                         <span class="text-xs px-1.5 py-0.5 rounded ${getStatusBadgeClass(item._status)}">${item._status}</span>
+                        ${todoLabel}
+                        ${faultLabel}
                     </div>
                     <div class="text-sm text-gray-600 line-clamp-2" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
                         ${truncate(item.fault_des, 120)}
@@ -1044,6 +1060,8 @@ function createItemCard(item, zone) {
     const daysText = item._days !== null ? `${item._days}天` : '-';
     const overdueLabel = item._overdue === 'overdue' ? '<span class="text-xs px-1.5 py-0.5 rounded badge-red font-medium">超期</span>' :
                          item._overdue === 'warning' ? '<span class="text-xs px-1.5 py-0.5 rounded badge-orange font-medium">即将超期</span>' : '';
+    const todoLabel = hasVal(item.wg_tracking) ? '<span class="text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200 font-medium">存在待办事项</span>' : '';
+    const faultLabel = hasVal(item.fault_classification) ? `<span class="text-xs px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 border border-sky-200 font-medium">${item.fault_classification}</span>` : '';
 
     card.innerHTML = `
         <div class="flex items-start justify-between gap-3">
@@ -1055,6 +1073,8 @@ function createItemCard(item, zone) {
                     <span class="text-xs text-gray-500">ATA ${item.ata || '-'}</span>
                     <span class="text-xs px-1.5 py-0.5 rounded ${getStatusBadgeClass(item._status)}">${item._status}</span>
                     ${overdueLabel}
+                    ${todoLabel}
+                    ${faultLabel}
                 </div>
                 <div class="text-sm text-gray-600 line-clamp-2" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
                     ${truncate(item.fault_des, 120)}
