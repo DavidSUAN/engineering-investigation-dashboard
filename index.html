@@ -181,6 +181,42 @@
             <!-- Four Color Zones -->
             <div id="zones-container" class="space-y-4"></div>
 
+            <!-- History Data -->
+            <div id="history-section" class="bg-white rounded-xl shadow-sm border-l-4 border-gray-300">
+                <div class="px-5 py-3 flex items-center justify-between cursor-pointer select-none" onclick="toggleHistory()">
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg">📁</span>
+                        <span class="font-semibold text-gray-700">历史数据</span>
+                        <span class="text-sm text-gray-400">（调查天数或count无有效数据）</span>
+                        <span id="history-count" class="text-sm font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">0 项</span>
+                    </div>
+                    <svg id="history-chevron" class="w-5 h-5 text-gray-400 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </div>
+                <div id="history-content" class="hidden">
+                    <!-- History Filter Panel -->
+                    <div class="px-5 pb-3 border-b border-gray-100">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-sm font-medium text-gray-600">历史数据筛选</span>
+                        </div>
+                        <div id="history-filter-container" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3"></div>
+                        <div class="mt-2 flex items-center gap-3">
+                            <div class="flex items-center gap-2">
+                                <label class="text-sm text-gray-500">开始日期:</label>
+                                <input type="date" id="history-date-from" class="text-sm border border-gray-300 rounded-lg px-2 py-1.5" onchange="applyHistoryFilters()">
+                                <span class="text-gray-400">-</span>
+                                <input type="date" id="history-date-to" class="text-sm border border-gray-300 rounded-lg px-2 py-1.5" onchange="applyHistoryFilters()">
+                            </div>
+                            <button onclick="resetHistoryFilters()" class="text-sm px-3 py-1.5 text-gray-500 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                                重置筛选
+                            </button>
+                        </div>
+                    </div>
+                    <div id="history-list" class="px-5 pb-4"></div>
+                </div>
+            </div>
+
             <!-- Export Button -->
             <div class="flex justify-end pb-6">
                 <button onclick="exportData()"
@@ -219,9 +255,13 @@
 // STATE
 // ============================================================
 let allData = [];
+let historyData = [];
 let filteredData = [];
+let filteredHistory = [];
 let uniqueValues = {};
+let historyUniqueValues = {};
 let activeFilters = {};
+let historyActiveFilters = {};
 let filtersVisible = false;
 
 // ============================================================
@@ -473,6 +513,7 @@ function parseExcel(buffer) {
 
     const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
     allData = [];
+    historyData = [];
 
     for (let i = 1; i < raw.length; i++) {
         const row = raw[i];
@@ -499,13 +540,23 @@ function parseExcel(buffer) {
         obj._overdue = getOverdueCategory(days);
         obj._index = i;
 
-        allData.push(obj);
+        const invDays = String(obj.investigation_days).trim();
+        const cnt = String(obj.count).trim();
+        const isActive = hasVal(invDays) && invDays !== 'N/A' && hasVal(cnt) && cnt !== 'N/A';
+        obj._isActive = isActive;
+
+        if (isActive) {
+            allData.push(obj);
+        } else {
+            historyData.push(obj);
+        }
     }
 
     extractUniqueValues();
     buildFilters();
+    buildHistoryFilters();
     showDashboardPage();
-    setTimeout(() => resetFilters(), 50);
+    setTimeout(() => { resetFilters(); resetHistoryFilters(); }, 50);
 }
 
 // ============================================================
@@ -513,6 +564,7 @@ function parseExcel(buffer) {
 // ============================================================
 function extractUniqueValues() {
     uniqueValues = {};
+    historyUniqueValues = {};
     for (const f of FILTER_CONFIG) {
         const vals = new Set();
         for (const item of allData) {
@@ -520,6 +572,13 @@ function extractUniqueValues() {
             if (hasVal(v)) vals.add(String(v).trim());
         }
         uniqueValues[f.key] = [...vals].sort();
+
+        const hVals = new Set();
+        for (const item of historyData) {
+            const v = item[f.key];
+            if (hasVal(v)) hVals.add(String(v).trim());
+        }
+        historyUniqueValues[f.key] = [...hVals].sort();
     }
 }
 
@@ -685,6 +744,158 @@ function toggleFilters() {
 }
 
 // ============================================================
+// HISTORY FILTER UI
+// ============================================================
+function buildHistoryFilters() {
+    const container = document.getElementById('history-filter-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    for (const f of FILTER_CONFIG) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'relative';
+        wrapper.id = `history-filter-${f.key}`;
+
+        const btn = document.createElement('button');
+        btn.className = 'w-full text-left px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white hover:border-gray-400 transition flex items-center justify-between';
+        btn.onclick = (e) => { e.stopPropagation(); toggleHistoryDropdown(f.key); };
+
+        const labelSpan = document.createElement('span');
+        labelSpan.id = `history-label-${f.key}`;
+        labelSpan.className = 'truncate text-gray-600';
+        labelSpan.textContent = f.label;
+
+        const chevron = document.createElement('svg');
+        chevron.className = 'w-4 h-4 text-gray-400 flex-shrink-0';
+        chevron.setAttribute('fill', 'none');
+        chevron.setAttribute('viewBox', '0 0 24 24');
+        chevron.setAttribute('stroke', 'currentColor');
+        chevron.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>';
+
+        btn.appendChild(labelSpan);
+        btn.appendChild(chevron);
+        wrapper.appendChild(btn);
+
+        const panel = document.createElement('div');
+        panel.id = `history-panel-${f.key}`;
+        panel.className = 'hidden absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20';
+
+        let html = '';
+        if (f.searchable) {
+            html += `<div class="p-2 border-b border-gray-100">
+                <input type="text" placeholder="搜索..." class="w-full px-2 py-1 border border-gray-200 rounded text-sm"
+                       oninput="filterHistoryDropdownOptions('${f.key}', this.value)" onclick="event.stopPropagation()">
+            </div>`;
+        }
+        html += `<div class="dropdown-panel p-1" id="history-options-${f.key}">`;
+        const vals = historyUniqueValues[f.key] || [];
+        for (const val of vals) {
+            html += `<label class="dropdown-option" data-value="${val}">
+                <input type="checkbox" value="${val}" onchange="onHistoryFilterChange('${f.key}')">
+                <span class="text-sm truncate">${val}</span>
+            </label>`;
+        }
+        html += '</div>';
+        panel.innerHTML = html;
+        wrapper.appendChild(panel);
+        container.appendChild(wrapper);
+    }
+}
+
+function toggleHistoryDropdown(key) {
+    const panel = document.getElementById(`history-panel-${key}`);
+    const overlay = document.getElementById('dropdown-overlay');
+    const isOpen = !panel.classList.contains('hidden');
+
+    closeAllHistoryDropdowns();
+
+    if (!isOpen) {
+        panel.classList.remove('hidden');
+        overlay.classList.remove('hidden');
+        overlay.onclick = () => { closeAllHistoryDropdowns(); closeAllDropdowns(); };
+    }
+}
+
+function closeAllHistoryDropdowns() {
+    document.getElementById('dropdown-overlay').classList.add('hidden');
+    for (const f of FILTER_CONFIG) {
+        const panel = document.getElementById(`history-panel-${f.key}`);
+        if (panel) panel.classList.add('hidden');
+    }
+}
+
+function filterHistoryDropdownOptions(key, query) {
+    const options = document.getElementById(`history-options-${key}`).querySelectorAll('.dropdown-option');
+    const q = query.toLowerCase();
+    options.forEach(opt => {
+        opt.style.display = opt.dataset.value.toLowerCase().includes(q) ? '' : 'none';
+    });
+}
+
+function onHistoryFilterChange(key) {
+    const checkboxes = document.getElementById(`history-options-${key}`).querySelectorAll('input[type="checkbox"]:checked');
+    historyActiveFilters[key] = [...checkboxes].map(cb => cb.value);
+    updateHistoryDropdownUI(key);
+    applyHistoryFilters();
+}
+
+function updateHistoryDropdownUI(key) {
+    const label = document.getElementById(`history-label-${key}`);
+    const config = FILTER_CONFIG.find(f => f.key === key);
+    const selected = historyActiveFilters[key] || [];
+
+    if (selected.length === 0) {
+        label.textContent = config.label;
+        label.className = 'truncate text-gray-600';
+    } else {
+        label.textContent = `${config.label} (${selected.length})`;
+        label.className = 'truncate text-blue-600 font-medium';
+    }
+
+    const checkboxes = document.getElementById(`history-options-${key}`).querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(cb => { cb.checked = selected.includes(cb.value); });
+}
+
+function applyHistoryFilters() {
+    const matchFilter = (item) => {
+        for (const f of FILTER_CONFIG) {
+            const selected = historyActiveFilters[f.key];
+            if (selected && selected.length > 0) {
+                const val = String(item[f.key] || '').trim();
+                if (!selected.includes(val)) return false;
+            }
+        }
+
+        const dateFrom = document.getElementById('history-date-from').value;
+        const dateTo = document.getElementById('history-date-to').value;
+        if (dateFrom && item._startDate) {
+            if (item._startDate < new Date(dateFrom)) return false;
+        }
+        if (dateTo && item._startDate) {
+            if (item._startDate > new Date(dateTo + 'T23:59:59')) return false;
+        }
+
+        return true;
+    };
+
+    filteredHistory = historyData.filter(matchFilter);
+    renderHistory();
+}
+
+function resetHistoryFilters() {
+    historyActiveFilters = {};
+    for (const f of FILTER_CONFIG) {
+        historyActiveFilters[f.key] = [];
+        updateHistoryDropdownUI(f.key);
+    }
+    const df = document.getElementById('history-date-from');
+    const dt = document.getElementById('history-date-to');
+    if (df) df.value = '';
+    if (dt) dt.value = '';
+    applyHistoryFilters();
+}
+
+// ============================================================
 // RENDERING - STATS
 // ============================================================
 function renderStats() {
@@ -759,6 +970,67 @@ function renderZones() {
     }
 }
 
+function renderHistory() {
+    const countEl = document.getElementById('history-count');
+    if (countEl) countEl.textContent = `${filteredHistory.length} 项`;
+
+    const list = document.getElementById('history-list');
+    if (!list) return;
+
+    if (filteredHistory.length === 0) {
+        list.innerHTML = '<div class="text-center text-gray-400 text-sm py-6">暂无历史数据</div>';
+        return;
+    }
+
+    const grid = document.createElement('div');
+    grid.className = 'grid gap-2';
+
+    for (const item of filteredHistory) {
+        const card = document.createElement('div');
+        card.className = 'item-card border border-gray-100 rounded-lg p-3 cursor-pointer hover:border-gray-300 opacity-70';
+        card.onclick = () => showDetail(item._index);
+
+        card.innerHTML = `
+            <div class="flex items-start justify-between gap-3">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap mb-1.5">
+                        <span class="font-semibold text-gray-800 text-sm">${item.ac || '-'}</span>
+                        <span class="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">${item.fleet || '-'}</span>
+                        <span class="text-xs text-gray-500">${item.base || '-'}</span>
+                        <span class="text-xs text-gray-500">ATA ${item.ata || '-'}</span>
+                        <span class="text-xs px-1.5 py-0.5 rounded ${getStatusBadgeClass(item._status)}">${item._status}</span>
+                    </div>
+                    <div class="text-sm text-gray-600 line-clamp-2" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
+                        ${truncate(item.fault_des, 120)}
+                    </div>
+                </div>
+                <div class="text-right flex-shrink-0">
+                    <div class="text-sm text-gray-400">${item.tmc_engineer || '-'}</div>
+                    <div class="text-xs text-gray-400">${formatDate(item._startDate)}</div>
+                </div>
+            </div>
+        `;
+        grid.appendChild(card);
+    }
+
+    list.innerHTML = '';
+    list.appendChild(grid);
+}
+
+function toggleHistory() {
+    const content = document.getElementById('history-content');
+    const chevron = document.getElementById('history-chevron');
+    if (!content || !chevron) return;
+    const isHidden = content.classList.contains('hidden');
+    if (isHidden) {
+        content.classList.remove('hidden');
+        chevron.style.transform = 'rotate(180deg)';
+    } else {
+        content.classList.add('hidden');
+        chevron.style.transform = '';
+    }
+}
+
 function createItemCard(item, zone) {
     const card = document.createElement('div');
     card.className = 'item-card border border-gray-100 rounded-lg p-3 cursor-pointer hover:border-gray-300';
@@ -797,7 +1069,7 @@ function createItemCard(item, zone) {
 // DETAIL PAGE
 // ============================================================
 function showDetail(index) {
-    const item = allData.find(d => d._index === index);
+    const item = allData.find(d => d._index === index) || historyData.find(d => d._index === index);
     if (!item) return;
 
     document.getElementById('detail-header-title').textContent =
