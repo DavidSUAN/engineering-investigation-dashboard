@@ -261,6 +261,30 @@
     <!-- Click outside dropdown handler -->
     <div id="dropdown-overlay" class="fixed inset-0 z-10 hidden" onclick="closeAllDropdowns()"></div>
 
+    <!-- ATA Fault Cause Modal -->
+    <div id="ata-modal" class="fixed inset-0 z-50 hidden items-center justify-center" style="background:rgba(0,0,0,0.4);">
+        <div id="ata-modal-box" class="bg-white rounded-xl shadow-2xl mx-4 fade-in" onclick="event.stopPropagation()">
+            <div class="px-5 py-4 flex items-center justify-between border-b border-gray-200">
+                <div>
+                    <span class="font-semibold text-gray-800" id="ata-modal-title">ATA章节故障原因分布</span>
+                    <span class="text-sm text-gray-400 ml-2" id="ata-modal-subtitle"></span>
+                </div>
+                <button onclick="closeATAModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="px-5 py-2 border-b border-gray-100 bg-gray-50">
+                <span id="ata-modal-filter" class="text-xs text-gray-500"></span>
+            </div>
+            <div class="p-5">
+                <div id="ata-chart-wrapper" style="position:relative; height:500px;">
+                    <canvas id="ataPieChart"></canvas>
+                </div>
+                <div id="ata-modal-empty" class="hidden text-center text-gray-400 text-sm py-8">该章节暂无故障原因数据</div>
+            </div>
+        </div>
+    </div>
+
 <script>
 // ============================================================
 // STATE
@@ -272,6 +296,7 @@ let activeFilters = {};
 let filtersVisible = false;
 let ataChartInstance = null;
 let engineerChartInstance = null;
+let ataPieChartInstance = null;
 
 // ============================================================
 // CONFIGURATION
@@ -876,6 +901,15 @@ function renderATAChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            onClick: (event, elements, chart) => {
+                if (elements.length > 0) {
+                    const ataChapter = chart.data.labels[elements[0].index];
+                    showATAPieChart(ataChapter);
+                }
+            },
+            onHover: (event, elements) => {
+                event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+            },
             plugins: { legend: { display: false } },
             scales: {
                 y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } },
@@ -1357,12 +1391,144 @@ function exportData() {
 }
 
 // ============================================================
+// ATA PIE CHART MODAL
+// ============================================================
+function showATAPieChart(ataChapter) {
+    const items = filteredData.filter(d => String(d.ata || '未知').trim() === String(ataChapter).trim());
+    const causeCounts = {};
+    for (const item of items) {
+        const cause = hasVal(item.fault_classification) ? String(item.fault_classification).trim() : '未定性';
+        causeCounts[cause] = (causeCounts[cause] || 0) + 1;
+    }
+
+    const entries = Object.entries(causeCounts).sort((a, b) => b[1] - a[1]);
+    const modal = document.getElementById('ata-modal');
+    const modalBox = document.getElementById('ata-modal-box');
+    const chartWrapper = document.getElementById('ata-chart-wrapper');
+    const emptyEl = document.getElementById('ata-modal-empty');
+    const canvas = document.getElementById('ataPieChart');
+
+    document.getElementById('ata-modal-title').textContent = `ATA ${ataChapter} 故障原因分布`;
+    document.getElementById('ata-modal-subtitle').textContent = `共 ${items.length} 项工程调查`;
+
+    const parts = [];
+    for (const f of FILTER_CONFIG) {
+        const selected = activeFilters[f.key];
+        if (selected && selected.length > 0) {
+            parts.push(`${f.label}: ${selected.join('、')}`);
+        }
+    }
+    const dateFrom = document.getElementById('date-from')?.value;
+    const dateTo = document.getElementById('date-to')?.value;
+    if (dateFrom) parts.push(`开始日期从 ${dateFrom}`);
+    if (dateTo) parts.push(`开始日期至 ${dateTo}`);
+    const filterText = parts.length === 0 ? '筛选条件: 无（显示全部数据）' : '筛选条件: ' + parts.join('  |  ');
+    document.getElementById('ata-modal-filter').textContent = filterText;
+
+    if (ataPieChartInstance) { ataPieChartInstance.destroy(); ataPieChartInstance = null; }
+
+    if (entries.length === 0) {
+        canvas.style.display = 'none';
+        emptyEl.classList.remove('hidden');
+        modalBox.style.width = '480px';
+        chartWrapper.style.height = '200px';
+    } else {
+        canvas.style.display = '';
+        emptyEl.classList.add('hidden');
+
+        const pieColors = [
+            '#3b82f6', '#ef4444', '#f97316', '#22c55e', '#a855f7',
+            '#eab308', '#06b6d4', '#ec4899', '#14b8a6', '#8b5cf6',
+            '#f43f5e', '#84cc16', '#6366f1', '#d946ef', '#0ea5e9'
+        ];
+
+        const pieLabels = entries.map(e => e[0]);
+        const pieData = entries.map(e => e[1]);
+        const pieTotal = pieData.reduce((a, b) => a + b, 0);
+
+        const chartHeight = 440;
+        modalBox.style.width = '620px';
+        modalBox.style.maxHeight = (window.innerHeight * 0.85) + 'px';
+        chartWrapper.style.height = chartHeight + 'px';
+
+        ataPieChartInstance = new Chart(canvas, {
+            type: 'pie',
+            data: {
+                labels: pieLabels,
+                datasets: [{
+                    data: pieData,
+                    backgroundColor: entries.map((_, i) => pieColors[i % pieColors.length]),
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: { top: 16, bottom: 16, left: 16, right: 16 } },
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            padding: 12,
+                            font: { size: 12 },
+                            usePointStyle: true,
+                            pointStyleWidth: 10,
+                            generateLabels: function(chart) {
+                                const data = chart.data;
+                                const ds = data.datasets[0];
+                                const total = ds.data.reduce((a, b) => a + b, 0);
+                                return data.labels.map((label, i) => {
+                                    const val = ds.data[i];
+                                    const pct = total > 0 ? ((val / total) * 100).toFixed(1) : '0.0';
+                                    return {
+                                        text: `${label}: ${val}项 (${pct}%)`,
+                                        fillStyle: ds.backgroundColor[i],
+                                        strokeStyle: ds.backgroundColor[i],
+                                        lineWidth: 0,
+                                        hidden: false,
+                                        index: i,
+                                        pointStyle: 'circle',
+                                        rotation: 0
+                                    };
+                                });
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                const pct = ((ctx.parsed / pieTotal) * 100).toFixed(1);
+                                return ` ${ctx.label}: ${ctx.parsed} 项 (${pct}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    modal.onclick = (e) => { if (e.target === modal) closeATAModal(); };
+}
+
+function closeATAModal() {
+    const modal = document.getElementById('ata-modal');
+    const modalBox = document.getElementById('ata-modal-box');
+    modal.classList.add('hidden');
+    modal.style.display = '';
+    if (modalBox) { modalBox.style.width = ''; modalBox.style.maxHeight = ''; }
+    if (ataPieChartInstance) { ataPieChartInstance.destroy(); ataPieChartInstance = null; }
+}
+
+// ============================================================
 // INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
     initUpload();
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') closeAllDropdowns();
+        if (e.key === 'Escape') { closeAllDropdowns(); closeATAModal(); }
     });
 });
 </script>
