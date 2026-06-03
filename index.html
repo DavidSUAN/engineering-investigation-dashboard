@@ -132,7 +132,12 @@
 
         <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
             <!-- Stat Cards -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-gray-500">
+                    <div class="text-sm text-gray-500 mb-1">总计</div>
+                    <div id="stat-total" class="text-3xl font-bold text-gray-700">0</div>
+                    <div class="text-xs text-gray-400 mt-1">当前筛选数据总数</div>
+                </div>
                 <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-blue-500">
                     <div class="text-sm text-gray-500 mb-1">进行中</div>
                     <div id="stat-active" class="text-3xl font-bold text-blue-600">0</div>
@@ -761,12 +766,14 @@ function renderStats() {
     const so = document.getElementById('stat-overdue');
     const sw = document.getElementById('stat-warning');
     const sn = document.getElementById('stat-normal');
+    const st = document.getElementById('stat-total');
     const di = document.getElementById('data-info');
     
     if (sa) sa.textContent = active;
     if (so) so.textContent = overdue;
     if (sw) sw.textContent = warning;
     if (sn) sn.textContent = normal;
+    if (st) st.textContent = filteredData.length;
     if (di) di.textContent = `共 ${filteredData.length} / ${allData.length} 条`;
 }
 
