@@ -714,10 +714,10 @@ function toggleFilters() {
 // RENDERING - STATS
 // ============================================================
 function renderStats() {
-    const active = filteredData.filter(d => d._status !== '可靠性周会').length;
-    const overdue = filteredData.filter(d => d._overdue === 'overdue').length;
-    const warning = filteredData.filter(d => d._overdue === 'warning').length;
-    const normal = filteredData.filter(d => d._overdue === 'normal').length;
+    const active = filteredData.filter(d => d._status !== '可靠性周会' && !d._isCompleted).length;
+    const overdue = filteredData.filter(d => d._overdue === 'overdue' && !d._isCompleted).length;
+    const warning = filteredData.filter(d => d._overdue === 'warning' && !d._isCompleted).length;
+    const normal = filteredData.filter(d => d._overdue === 'normal' && !d._isCompleted).length;
 
     const sa = document.getElementById('stat-active');
     const so = document.getElementById('stat-overdue');
