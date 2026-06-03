@@ -545,7 +545,7 @@ function parseExcel(buffer) {
 
         const invDays = String(obj.investigation_days).trim();
         const cnt = String(obj.count).trim();
-        obj._isCompleted = !(hasVal(invDays) && invDays !== 'N/A' && hasVal(cnt) && cnt !== 'N/A');
+        obj._isCompleted = !(hasVal(invDays) && invDays !== 'N/A' && hasVal(cnt) && cnt !== 'N/A') || hasVal(obj.end_date);
 
         allData.push(obj);
     }
@@ -1103,6 +1103,11 @@ function showDetail(index) {
     const container = document.getElementById('detail-content');
     const daysText = item._days !== null ? `${item._days}天` : '-';
     const overdueCategory = item._overdue;
+    const isCompleted = item._isCompleted;
+    const daysColor = isCompleted ? 'text-green-600' : (item._days > 9 ? 'text-red-600' : item._days >= 6 ? 'text-orange-600' : item._days >= 3 ? 'text-yellow-600' : 'text-green-600');
+    const overdueTags = !isCompleted ? (overdueCategory === 'overdue' ? '<span class="text-xs px-2 py-0.5 rounded badge-red font-medium">超期</span>' : '')
+        + (overdueCategory === 'warning' ? '<span class="text-xs px-2 py-0.5 rounded badge-orange font-medium">即将超期</span>' : '') : '';
+    const completedTag = isCompleted ? '<span class="text-xs px-2 py-0.5 rounded bg-gray-200 text-gray-600 font-medium">已完成</span>' : '';
 
     // Flow progress
     const currentStatusIdx = STATUS_FLOW.indexOf(item._status);
@@ -1133,11 +1138,11 @@ function showDetail(index) {
                 <div class="text-sm text-gray-500 mt-1">${item.base || '-'} | ATA ${item.ata || '-'}</div>
             </div>
             <div class="text-right">
-                <div class="text-3xl font-bold ${item._days > 9 ? 'text-red-600' : item._days >= 6 ? 'text-orange-600' : item._days >= 3 ? 'text-yellow-600' : 'text-green-600'}">${daysText}</div>
+                <div class="text-3xl font-bold ${daysColor}">${daysText}</div>
                 <div class="flex items-center gap-2 mt-1 justify-end">
                     <span class="text-xs px-2 py-0.5 rounded ${getStatusBadgeClass(item._status)} font-medium">${item._status}</span>
-                    ${overdueCategory === 'overdue' ? '<span class="text-xs px-2 py-0.5 rounded badge-red font-medium">超期</span>' : ''}
-                    ${overdueCategory === 'warning' ? '<span class="text-xs px-2 py-0.5 rounded badge-orange font-medium">即将超期</span>' : ''}
+                    ${completedTag}
+                    ${overdueTags}
                 </div>
             </div>
         </div>
