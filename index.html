@@ -108,17 +108,17 @@
                 </div>
                 <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-red-500">
                     <div class="text-sm text-gray-500 mb-1">超期</div>
-                    <div id="stat_overdue" class="text-3xl font-bold text-red-600">0</div>
+                    <div id="stat-overdue" class="text-3xl font-bold text-red-600">0</div>
                     <div class="text-xs text-gray-400 mt-1">超过12天</div>
                 </div>
                 <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-orange-500">
                     <div class="text-sm text-gray-500 mb-1">即将超期</div>
-                    <div id="stat_warning" class="text-3xl font-bold text-orange-600">0</div>
+                    <div id="stat-warning" class="text-3xl font-bold text-orange-600">0</div>
                     <div class="text-xs text-gray-400 mt-1">10-12天</div>
                 </div>
                 <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-green-500">
                     <div class="text-sm text-gray-500 mb-1">正常</div>
-                    <div id="stat_normal" class="text-3xl font-bold text-green-600">0</div>
+                    <div id="stat-normal" class="text-3xl font-bold text-green-600">0</div>
                     <div class="text-xs text-gray-400 mt-1">9天以内</div>
                 </div>
             </div>
@@ -394,7 +394,7 @@ function parseExcel(buffer) {
     extractUniqueValues();
     buildFilters();
     showDashboardPage();
-    resetFilters();
+    setTimeout(() => resetFilters(), 50);
 }
 
 // ============================================================
@@ -580,12 +580,17 @@ function renderStats() {
     const warning = filteredData.filter(d => d._overdue === 'warning').length;
     const normal = filteredData.filter(d => d._overdue === 'normal').length;
 
-    const el = (id) => { const e = document.getElementById(id); if (!e) console.error('Missing element:', id); return e; };
-    const sa = el('stat-active'); if (sa) sa.textContent = active;
-    const so = el('stat-overdue'); if (so) so.textContent = overdue;
-    const sw = el('stat-warning'); if (sw) sw.textContent = warning;
-    const sn = el('stat-normal'); if (sn) sn.textContent = normal;
-    const di = el('data-info'); if (di) di.textContent = `共 ${filteredData.length} / ${allData.length} 条`;
+    const sa = document.getElementById('stat-active');
+    const so = document.getElementById('stat-overdue');
+    const sw = document.getElementById('stat-warning');
+    const sn = document.getElementById('stat-normal');
+    const di = document.getElementById('data-info');
+    
+    if (sa) sa.textContent = active;
+    if (so) so.textContent = overdue;
+    if (sw) sw.textContent = warning;
+    if (sn) sn.textContent = normal;
+    if (di) di.textContent = `共 ${filteredData.length} / ${allData.length} 条`;
 }
 
 // ============================================================
