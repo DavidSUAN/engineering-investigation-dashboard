@@ -1465,6 +1465,24 @@ function showATAPieChart(ataChapter) {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                onClick: (event, elements, chart) => {
+                    if (elements.length > 0) {
+                        const causeName = chart.data.labels[elements[0].index];
+                        closeATAModal();
+                        if (causeName === '未定性') {
+                            activeFilters['ata'] = [ataChapter];
+                            updateDropdownUI('ata');
+                        } else {
+                            activeFilters['fault_classification'] = [causeName];
+                            updateDropdownUI('fault_classification');
+                        }
+                        applyFilters();
+                        document.getElementById('zones-container').scrollIntoView({ behavior: 'smooth' });
+                    }
+                },
+                onHover: (event, elements) => {
+                    event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                },
                 layout: { padding: { top: 16, bottom: 16, left: 16, right: 16 } },
                 plugins: {
                     legend: {
