@@ -78,6 +78,31 @@
                 <p class="text-gray-400 text-sm">或点击选择文件 (.xlsx)</p>
             </div>
             <input type="file" id="file-input" accept=".xlsx,.xls" class="hidden">
+
+            <div class="flex items-center gap-3 my-5">
+                <div class="flex-1 h-px bg-gray-200"></div>
+                <span class="text-sm text-gray-400">或从服务器/本地路径获取</span>
+                <div class="flex-1 h-px bg-gray-200"></div>
+            </div>
+
+            <div class="flex gap-2">
+                <input type="text" id="server-path" placeholder="输入路径，如 http://192.168.1.100:8080/data.xlsx 或 C:\Users\Documents\data.xlsx"
+                       class="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                       onkeydown="if(event.key==='Enter') fetchFromServer()">
+                <button onclick="fetchFromServer()" id="fetch-btn"
+                        class="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium flex items-center gap-1.5 flex-shrink-0">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    </svg>
+                    获取
+                </button>
+            </div>
+            <div class="mt-2 space-y-1">
+                <p class="text-xs text-gray-400">• HTTP/HTTPS 地址：直接从服务器获取（需本地服务器提供文件访问）</p>
+                <p class="text-xs text-gray-400">• 本地文件路径：如 <code class="bg-gray-100 px-1 rounded">C:\Users\Documents\data.xlsx</code> 或 <code class="bg-gray-100 px-1 rounded">/Users/david/data.xlsx</code></p>
+                <p class="text-xs text-orange-500">⚠️ 本地路径需要配合本地文件服务脚本使用（详见 README）</p>
+            </div>
+
             <div id="upload-error" class="hidden mt-4 text-center text-red-500 text-sm"></div>
         </div>
     </div>
@@ -90,6 +115,12 @@
                 <h1 class="text-lg font-bold text-gray-800">TMC空客组工程调查看板</h1>
                 <div class="flex items-center gap-3">
                     <span id="data-info" class="text-sm text-gray-400"></span>
+                    <button id="refresh-server-btn" onclick="refreshFromServer()" class="hidden text-sm px-3 py-1.5 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 transition flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        刷新数据
+                    </button>
                     <button onclick="document.getElementById('file-input').click()"
                             class="text-sm px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
                         重新上传
@@ -361,6 +392,11 @@ function initUpload() {
     dropZone = document.getElementById('drop-zone');
     fileInput = document.getElementById('file-input');
 
+    const savedPath = localStorage.getItem('serverPath');
+    if (savedPath) {
+        document.getElementById('server-path').value = savedPath;
+    }
+
     dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
     dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
     dropZone.addEventListener('drop', e => {
@@ -393,6 +429,81 @@ function handleFile(file) {
         }
     };
     reader.readAsArrayBuffer(file);
+}
+
+async function fetchFromServer() {
+    const pathInput = document.getElementById('server-path');
+    const fetchBtn = document.getElementById('fetch-btn');
+    const errEl = document.getElementById('upload-error');
+    errEl.classList.add('hidden');
+
+    const input = pathInput.value.trim();
+    if (!input) {
+        errEl.textContent = '请输入服务器地址或本地文件路径';
+        errEl.classList.remove('hidden');
+        return;
+    }
+
+    const isHttp = input.startsWith('http://') || input.startsWith('https://');
+    const isLocalPath = !isHttp && (input.includes('/') || input.includes('\\'));
+
+    if (isLocalPath) {
+        errEl.innerHTML = `
+            <div class="text-left bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <p class="font-medium text-orange-800 mb-2">本地文件路径检测到</p>
+                <p class="text-sm text-orange-700 mb-3">出于浏览器安全限制，无法直接读取本地文件。请选择以下方式之一：</p>
+                <ol class="text-sm text-orange-700 space-y-2 list-decimal list-inside">
+                    <li><strong>使用上传按钮</strong>：点击上方上传区域，选择文件</li>
+                    <li><strong>启动本地文件服务</strong>：运行项目中的 <code class="bg-orange-100 px-1 rounded">file-server.py</code> 脚本，然后通过 <code class="bg-orange-100 px-1 rounded">http://localhost:8765</code> 访问</li>
+                </ol>
+                <button onclick="this.parentElement.parentElement.classList.add('hidden')" class="mt-3 text-xs text-orange-600 hover:text-orange-800">关闭提示</button>
+            </div>
+        `;
+        errEl.classList.remove('hidden');
+        return;
+    }
+
+    fetchBtn.disabled = true;
+    fetchBtn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>获取中...';
+
+    try {
+        const response = await fetch(input);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const buffer = await response.arrayBuffer();
+        localStorage.setItem('serverPath', input);
+        parseExcel(buffer);
+        document.getElementById('refresh-server-btn').classList.remove('hidden');
+    } catch (err) {
+        errEl.textContent = '获取文件失败: ' + err.message;
+        errEl.classList.remove('hidden');
+    } finally {
+        fetchBtn.disabled = false;
+        fetchBtn.innerHTML = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>获取';
+    }
+}
+
+async function refreshFromServer() {
+    const url = localStorage.getItem('serverPath');
+    if (!url) return;
+
+    const refreshBtn = document.getElementById('refresh-server-btn');
+    refreshBtn.disabled = true;
+    refreshBtn.innerHTML = '<svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>刷新中...';
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const buffer = await response.arrayBuffer();
+        parseExcel(buffer);
+    } catch (err) {
+        alert('刷新失败: ' + err.message);
+    } finally {
+        refreshBtn.disabled = false;
+        refreshBtn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>刷新数据';
+    }
 }
 
 function parseExcel(buffer) {
