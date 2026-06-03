@@ -384,6 +384,15 @@ function hasVal(v) {
     return v !== null && v !== undefined && String(v).trim() !== '' && String(v) !== '/' && String(v) !== 'N/A' && String(v) !== 'NULL';
 }
 
+function getTodoLabel(item) {
+    if (!hasVal(item.wg_tracking)) return '';
+    if (hasVal(item.reliability_date)) return '待办事项由可靠性跟踪';
+    const wgDate = parseDate(item.wg_date);
+    const days = calcDays(wgDate);
+    if (days !== null && days >= 0) return `已存在待办事项${days}天`;
+    return '存在待办事项';
+}
+
 function truncate(s, n) {
     if (!s) return '-';
     return s.length > n ? s.substring(0, n) + '...' : s;
@@ -554,6 +563,7 @@ function parseExcel(buffer) {
         obj._status = status;
         obj._colorZone = getColorZone(obj);
         obj._overdue = getOverdueCategory(obj);
+        obj._todoLabel = getTodoLabel(obj);
         obj._index = i;
 
         const invDays = String(obj.investigation_days).trim();
@@ -1049,7 +1059,7 @@ function renderHistory() {
         const card = document.createElement('div');
         card.className = 'item-card border border-gray-100 rounded-lg p-3 cursor-pointer hover:border-gray-300 opacity-70';
         card.onclick = () => showDetail(item._index);
-        const todoLabel = hasVal(item.wg_tracking) ? '<span class="text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200 font-medium">存在待办事项</span>' : '';
+        const todoLabel = item._todoLabel ? `<span class="text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200 font-medium">${item._todoLabel}</span>` : '';
         const faultLabel = hasVal(item.fault_classification) ? `<span class="text-xs px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 border border-sky-200 font-medium">${item.fault_classification}</span>` : '';
 
         card.innerHTML = `
@@ -1103,7 +1113,7 @@ function createItemCard(item, zone) {
     const daysText = item._days !== null ? `${item._days}天` : '-';
     const overdueLabel = item._overdue === 'overdue' ? '<span class="text-xs px-1.5 py-0.5 rounded badge-red font-medium">超期</span>' :
                          item._overdue === 'attention' ? '<span class="text-xs px-1.5 py-0.5 rounded badge-orange font-medium">注意</span>' : '';
-    const todoLabel = hasVal(item.wg_tracking) ? '<span class="text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200 font-medium">存在待办事项</span>' : '';
+    const todoLabel = item._todoLabel ? `<span class="text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200 font-medium">${item._todoLabel}</span>` : '';
     const faultLabel = hasVal(item.fault_classification) ? `<span class="text-xs px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 border border-sky-200 font-medium">${item.fault_classification}</span>` : '';
 
     card.innerHTML = `
