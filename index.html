@@ -6,6 +6,7 @@
     <title>TMC空客组工程调查看板</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif; }
@@ -154,6 +155,28 @@
                 </div>
             </div>
 
+            <!-- ATA Chapter Chart -->
+            <div class="bg-white rounded-xl shadow-sm p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="font-semibold text-gray-700">ATA章节工程调查统计</span>
+                    <span class="text-xs text-gray-400">按当前筛选条件统计</span>
+                </div>
+                <div style="position:relative; height:220px;">
+                    <canvas id="ataChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Engineer Chart -->
+            <div class="bg-white rounded-xl shadow-sm p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="font-semibold text-gray-700">工程师工程调查统计</span>
+                    <span class="text-xs text-gray-400">悬停查看详细数据</span>
+                </div>
+                <div style="position:relative; height:300px;">
+                    <canvas id="engineerChart"></canvas>
+                </div>
+            </div>
+
             <!-- Filter Panel -->
             <div class="bg-white rounded-xl shadow-sm">
                 <div class="px-5 py-3 flex items-center justify-between cursor-pointer select-none" onclick="toggleFilters()">
@@ -240,6 +263,8 @@ let filteredData = [];
 let uniqueValues = {};
 let activeFilters = {};
 let filtersVisible = false;
+let ataChartInstance = null;
+let engineerChartInstance = null;
 
 // ============================================================
 // CONFIGURATION
@@ -269,8 +294,8 @@ const FILTER_CONFIG = [
 ];
 
 const ZONE_CONFIG = [
-    { key: 'red', label: '超期', condition: '>9天', icon: '🔴', cssClass: 'zone-red', badgeClass: 'badge-red' },
-    { key: 'orange', label: '关注', condition: '6-8天', icon: '🟠', cssClass: 'zone-orange', badgeClass: 'badge-orange' },
+    { key: 'red', label: '超期', condition: '>12天', icon: '🔴', cssClass: 'zone-red', badgeClass: 'badge-red' },
+    { key: 'orange', label: '关注', condition: '6-12天', icon: '🟠', cssClass: 'zone-orange', badgeClass: 'badge-orange' },
     { key: 'yellow', label: '注意', condition: '3-5天', icon: '🟡', cssClass: 'zone-yellow', badgeClass: 'badge-yellow' },
     { key: 'green', label: '正常', condition: '0-2天', icon: '🟢', cssClass: 'zone-green', badgeClass: 'badge-green' }
 ];
@@ -327,7 +352,7 @@ function getStatus(row) {
 
 function getColorZone(days) {
     if (days === null) return null;
-    if (days > 9) return 'red';
+    if (days > 12) return 'red';
     if (days >= 6) return 'orange';
     if (days >= 3) return 'yellow';
     return 'green';
@@ -569,6 +594,7 @@ function applyFilters() {
     filteredData = allData.filter(matchFilter);
 
     renderStats();
+    renderAllCharts();
     renderZones();
     renderHistory();
 }
@@ -730,6 +756,169 @@ function renderStats() {
     if (sw) sw.textContent = warning;
     if (sn) sn.textContent = normal;
     if (di) di.textContent = `共 ${filteredData.length} / ${allData.length} 条`;
+}
+
+// ============================================================
+// CHARTS
+// ============================================================
+function renderAllCharts() {
+    renderATAChart();
+    renderEngineerChart();
+}
+
+function renderATAChart() {
+    const canvas = document.getElementById('ataChart');
+    if (!canvas) return;
+
+    const ataCounts = {};
+    for (const item of filteredData) {
+        const ata = item.ata || '未知';
+        ataCounts[ata] = (ataCounts[ata] || 0) + 1;
+    }
+
+    let entries = Object.entries(ataCounts).sort((a, b) => b[1] - a[1]);
+    const maxItems = 20;
+    if (entries.length > maxItems) entries = entries.slice(0, maxItems);
+
+    const labels = entries.map(e => e[0]);
+    const data = entries.map(e => e[1]);
+
+    if (ataChartInstance) { ataChartInstance.destroy(); ataChartInstance = null; }
+    if (labels.length === 0) return;
+
+    ataChartInstance = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: '数量',
+                data,
+                backgroundColor: '#3b82f6',
+                borderRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } },
+                x: { ticks: { maxRotation: 45, font: { size: 10 } } }
+            }
+        }
+    });
+}
+
+function renderEngineerChart() {
+    const canvas = document.getElementById('engineerChart');
+    if (!canvas) return;
+
+    const engStats = {};
+    for (const item of filteredData) {
+        const eng = item.tmc_engineer || '未知';
+        if (!engStats[eng]) {
+            engStats[eng] = { overdue: 0, attention: 0, warning: 0, normal: 0, completed: 0 };
+        }
+        if (item._isCompleted) {
+            engStats[eng].completed++;
+        } else {
+            switch (item._colorZone) {
+                case 'red': engStats[eng].overdue++; break;
+                case 'orange': engStats[eng].attention++; break;
+                case 'yellow': engStats[eng].warning++; break;
+                case 'green': engStats[eng].normal++; break;
+                default: engStats[eng].normal++; break;
+            }
+        }
+    }
+
+    let entries = Object.entries(engStats).sort((a, b) => {
+        const ta = a[1].overdue + a[1].attention + a[1].warning + a[1].normal + a[1].completed;
+        const tb = b[1].overdue + b[1].attention + b[1].warning + b[1].normal + b[1].completed;
+        return tb - ta;
+    });
+
+    const maxItems = 15;
+    if (entries.length > maxItems) entries = entries.slice(0, maxItems);
+
+    const labels = entries.map(e => e[0]);
+    const totals = entries.map(e => e[1].overdue + e[1].attention + e[1].warning + e[1].normal + e[1].completed);
+    const overdueData = entries.map(e => e[1].overdue);
+    const attentionData = entries.map(e => e[1].attention);
+    const warningData = entries.map(e => e[1].warning);
+    const normalData = entries.map(e => e[1].normal);
+    const completedData = entries.map(e => e[1].completed);
+
+    if (engineerChartInstance) { engineerChartInstance.destroy(); engineerChartInstance = null; }
+    if (labels.length === 0) return;
+
+    const categories = ['超期', '关注', '注意', '正常', '已完成'];
+
+    engineerChartInstance = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                { label: '超期', data: overdueData, backgroundColor: '#ef4444' },
+                { label: '关注', data: attentionData, backgroundColor: '#f97316' },
+                { label: '注意', data: warningData, backgroundColor: '#eab308' },
+                { label: '正常', data: normalData, backgroundColor: '#22c55e' },
+                { label: '已完成', data: completedData, backgroundColor: '#94a3b8' },
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'top' } },
+            scales: {
+                x: {
+                    stacked: true,
+                    ticks: {
+                        font: { size: 11 },
+                        callback: function(value, index) {
+                            return [this.getLabelForValue(value), `${totals[index]}项`];
+                        }
+                    }
+                },
+                y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
+            },
+            layout: { padding: { top: 65 } }
+        },
+        plugins: [{
+            id: 'barLabels',
+            afterDraw(chart) {
+                const ctx = chart.ctx;
+                const meta = chart.getDatasetMeta(0);
+                if (!meta.data || !meta.data.length) return;
+
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.font = '9px sans-serif';
+                ctx.fillStyle = '#374151';
+
+                const datasets = chart.data.datasets;
+                const lineHeight = 11;
+
+                meta.data.forEach((bar, idx) => {
+                    const parts = [];
+                    for (let i = 0; i < datasets.length; i++) {
+                        const val = datasets[i].data[idx] || 0;
+                        if (val > 0) parts.push(`${categories[i]}:${val}`);
+                    }
+                    if (parts.length === 0) return;
+
+                    const reversed = parts.slice().reverse();
+                    reversed.forEach((part, i) => {
+                        const y = bar.y - 6 - (reversed.length - 1 - i) * lineHeight;
+                        ctx.fillText(part, bar.x, y);
+                    });
+                });
+
+                ctx.restore();
+            }
+        }]
+    });
 }
 
 // ============================================================
