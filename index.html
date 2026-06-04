@@ -347,6 +347,7 @@ let ata350ChartInstance = null;
 let ata330ChartInstance = null;
 let engineerChartInstance = null;
 let ataPieChartInstance = null;
+let cameFromTodoBoard = false;
 
 // ============================================================
 // CONFIGURATION
@@ -1490,6 +1491,10 @@ function showDashboardPage() {
 
 function showDashboard() {
     showDashboardPage();
+    if (cameFromTodoBoard) {
+        cameFromTodoBoard = false;
+        setTimeout(() => showTodoBoard(), 100);
+    }
 }
 
 // ============================================================
@@ -1713,7 +1718,7 @@ function showTodoBoard() {
             const row = document.createElement('div');
             row.className = 'grid border-b border-gray-100 hover:bg-gray-50 transition cursor-pointer';
             row.style.cssText = 'grid-template-columns:40% 40% 20%';
-            row.onclick = () => { closeTodoModal(); showDetail(item._index); };
+            row.onclick = () => { cameFromTodoBoard = true; closeTodoModal(); showDetail(item._index); };
 
             const desCell = document.createElement('div');
             desCell.className = 'px-4 py-3 text-gray-800';
