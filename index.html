@@ -366,20 +366,86 @@ let todoEngineerFilter = [];
 // ============================================================
 // CONFIGURATION
 // ============================================================
-const COL_MAP = {
-    A: 'raw_status', B: 'source_label', C: 'source', D: 'source_other',
-    E: 'fleet', F: 'ac', G: 'base', H: 'fault_date', I: 'ata',
-    J: 'fault_des', K: 'investigation_days', L: 'tmc_engineer',
-    M: 'base_engineer', N: 'start_date', O: 'end_date', P: 'count',
-    Q: 'report_title', R: 'dept_discussion', S: 'fault_classification',
-    T: 'reliability_level', U: 'wg_date', V: 'wg_decision',
-    W: 'wg_tracking', X: 'report_score', Y: 'reliability_date',
-    Z: 'measure_status', AA: 'completion_status',
-    AB: 'kw_ecam', AC: 'kw_fault_msg', AD: 'kw_fault_source_confirm',
-    AE: 'kw_fault_source1_name', AF: 'kw_fault_source1_pn',
-    AG: 'kw_fault_source2_name', AH: 'kw_fault_source2_pn',
-    AI: 'kw_fault_source3_name', AJ: 'kw_fault_source3_pn'
+// Header-name-based column mapping (resilient to column reordering)
+// Key = normalized header text (newlines → spaces, whitespace collapsed)
+// Value = internal field name, or array for duplicate headers (ordered by occurrence)
+// 注意: 第32/33列表头原文笔误为"故障源1"，实际应为"故障源3"
+const HEADER_FIELD_MAP = {
+    '': 'raw_status',
+    'source': 'source',
+    'fleet': 'fleet',
+    'ac': 'ac',
+    'base': 'base',
+    'fault_date': 'fault_date',
+    'ata': 'ata',
+    'fault_des': 'fault_des',
+    '调查天数（日历日）': 'investigation_days',
+    'TMC engineer': 'tmc_engineer',
+    'BASE engineer': 'base_engineer',
+    'start_date': 'start_date',
+    'end_date': 'end_date',
+    'count': 'count',
+    'report_title': 'report_title',
+    '报告评分': 'report_score',
+    '科室讨论日期/结果': 'dept_discussion',
+    '科室讨论故障原因定性': 'fault_classification',
+    '待上可靠性周会级别': 'reliability_level',
+    'WG日期': 'wg_date',
+    'WG会议决议': 'wg_decision',
+    'WG跟踪事项': 'wg_tracking',
+    '可靠性周会日期': 'reliability_date',
+    '措施完成情况': 'measure_status',
+    '完成状态': 'completion_status',
+    '关键字1 ECAM警告': 'kw_ecam',
+    '关键字2 故障信息': 'kw_fault_msg',
+    '关键字3 是否确定故障源': 'kw_fault_source_confirm',
+    '关键字4 故障源1（名称）': ['kw_fault_source1_name', 'kw_fault_source3_name'],
+    '关键字4 故障源1（件号）': ['kw_fault_source1_pn', 'kw_fault_source3_pn'],
+    '关键字4 故障源2（名称）': 'kw_fault_source2_name',
+    '关键字4 故障源2（件号）': 'kw_fault_source2_pn',
 };
+
+function normalizeHeader(raw) {
+    if (raw === undefined || raw === null) return '';
+    return String(raw).replace(/^"|"$/g, '').replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function buildColumnMap(headers) {
+    const map = {};
+    const occurrence = {};
+
+    for (let i = 0; i < headers.length; i++) {
+        const key = normalizeHeader(headers[i]);
+
+        // First column with empty/blank header → raw_status (状态)
+        if (i === 0 && key === '') {
+            map[i] = 'raw_status';
+            continue;
+        }
+
+        const mapping = HEADER_FIELD_MAP[key];
+        if (!mapping) continue;
+
+        if (Array.isArray(mapping)) {
+            const idx = occurrence[key] || 0;
+            map[i] = mapping[idx] || mapping[mapping.length - 1];
+            occurrence[key] = idx + 1;
+        } else {
+            map[i] = mapping;
+        }
+    }
+
+    return map;
+}
+
+// 有效的故障原因列表，其他值一律视为"未定性"
+const VALID_FAULT_CAUSES = ['部件可靠性', '人为因素', '设计原因', '修理质量', '零短小时件', '科室讨论关闭'];
+
+function normalizeFaultCause(raw) {
+    if (!hasVal(raw)) return '未定性';
+    const val = String(raw).trim();
+    return VALID_FAULT_CAUSES.includes(val) ? val : '未定性';
+}
 
 const FILTER_CONFIG = [
     { key: 'source', label: '故障类型' },
@@ -633,6 +699,7 @@ function parseExcel(buffer) {
     if (!ws) throw new Error('未找到"调查项目清单"工作表');
 
     const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    const colMap = buildColumnMap(raw[0] || []);
     allData = [];
 
     for (let i = 1; i < raw.length; i++) {
@@ -640,9 +707,9 @@ function parseExcel(buffer) {
         if (!row || row.length === 0) continue;
 
         const obj = {};
-        const keys = Object.keys(COL_MAP);
-        for (let k = 0; k < keys.length; k++) {
-            obj[COL_MAP[keys[k]]] = row[k] ?? '';
+        for (let ci = 0; ci < row.length; ci++) {
+            const field = colMap[ci];
+            if (field) obj[field] = row[ci] ?? '';
         }
 
         const startDate = parseDate(obj.start_date);
@@ -685,12 +752,16 @@ function extractUniqueValues() {
             uniqueValues[f.key] = ['有', '无'];
             continue;
         }
-        const vals = new Set();
-        for (const item of allData) {
-            const v = item[f.key];
-            if (hasVal(v)) vals.add(String(v).trim());
+        if (f.key === 'fault_classification') {
+            uniqueValues[f.key] = [...VALID_FAULT_CAUSES, '未定性'];
+        } else {
+            const vals = new Set();
+            for (const item of allData) {
+                const v = item[f.key];
+                if (hasVal(v)) vals.add(String(v).trim());
+            }
+            uniqueValues[f.key] = [...vals].sort();
         }
-        uniqueValues[f.key] = [...vals].sort();
     }
 }
 
@@ -703,6 +774,9 @@ function applyFilters() {
                     const hasTodo = hasVal(item.wg_tracking);
                     if (selected.includes('有') && !hasTodo) return false;
                     if (selected.includes('无') && hasTodo) return false;
+                } else if (f.key === 'fault_classification') {
+                    const val = normalizeFaultCause(item.fault_classification);
+                    if (!selected.includes(val)) return false;
                 } else {
                     const val = String(item[f.key] || '').trim();
                     if (!selected.includes(val)) return false;
@@ -1223,7 +1297,8 @@ function renderZones() {
     container.innerHTML = '';
 
     for (const zone of ZONE_CONFIG) {
-        const items = filteredData.filter(d => d._colorZone === zone.key && !d._isCompleted);
+        const items = filteredData.filter(d => d._colorZone === zone.key && !d._isCompleted)
+            .sort((a, b) => (b._days ?? 0) - (a._days ?? 0));
 
         const section = document.createElement('div');
         section.className = `bg-white rounded-xl shadow-sm ${zone.cssClass} fade-in`;
@@ -1290,7 +1365,7 @@ function renderHistory() {
         card.onclick = () => showDetail(item._index);
         const todoLabel = item._todoLabel ? `<span class="text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200 font-medium">${item._todoLabel}</span>` : '';
                 const reliabilityLabel = item._reliabilityLabel ? `<span class="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700 border border-green-200 font-medium">${item._reliabilityLabel}</span>` : '';
-        const faultLabel = hasVal(item.fault_classification) ? `<span class="text-xs px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 border border-sky-200 font-medium">${item.fault_classification}</span>` : '';
+        const faultLabel = normalizeFaultCause(item.fault_classification) !== '未定性' ? `<span class="text-xs px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 border border-sky-200 font-medium">${normalizeFaultCause(item.fault_classification)}</span>` : '';
 
         card.innerHTML = `
             <div class="flex items-start justify-between gap-3">
@@ -1346,7 +1421,7 @@ function createItemCard(item, zone) {
                          item._overdue === 'attention' ? '<span class="text-xs px-1.5 py-0.5 rounded badge-orange font-medium">注意</span>' : '';
     const todoLabel = item._todoLabel ? `<span class="text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200 font-medium">${item._todoLabel}</span>` : '';
             const reliabilityLabel = item._reliabilityLabel ? `<span class="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700 border border-green-200 font-medium">${item._reliabilityLabel}</span>` : '';
-        const faultLabel = hasVal(item.fault_classification) ? `<span class="text-xs px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 border border-sky-200 font-medium">${item.fault_classification}</span>` : '';
+        const faultLabel = normalizeFaultCause(item.fault_classification) !== '未定性' ? `<span class="text-xs px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 border border-sky-200 font-medium">${normalizeFaultCause(item.fault_classification)}</span>` : '';
 
     card.innerHTML = `
         <div class="flex items-start justify-between gap-3">
@@ -1579,7 +1654,7 @@ function showATAPieChart(ataChapter, fleetKeyword) {
 
     const causeCounts = {};
     for (const item of items) {
-        const cause = hasVal(item.fault_classification) ? String(item.fault_classification).trim() : '未定性';
+        const cause = normalizeFaultCause(item.fault_classification);
         causeCounts[cause] = (causeCounts[cause] || 0) + 1;
     }
 
