@@ -172,6 +172,28 @@
                 </div>
             </div>
 
+            <!-- ATA Fleet Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="bg-white rounded-xl shadow-sm p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="font-semibold text-gray-700">ATA章节工程调查统计（A350）</span>
+                        <span class="text-xs text-gray-400">固定筛选机型 A350</span>
+                    </div>
+                    <div style="position:relative; height:220px;">
+                        <canvas id="ata350Chart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="font-semibold text-gray-700">ATA章节工程调查统计（A330）</span>
+                        <span class="text-xs text-gray-400">固定筛选机型 A330</span>
+                    </div>
+                    <div style="position:relative; height:220px;">
+                        <canvas id="ata330Chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
             <!-- Engineer Chart -->
             <div class="bg-white rounded-xl shadow-sm p-5">
                 <div class="flex items-center justify-between mb-4">
@@ -321,6 +343,8 @@ let uniqueValues = {};
 let activeFilters = {};
 let filtersVisible = true;
 let ataChartInstance = null;
+let ata350ChartInstance = null;
+let ata330ChartInstance = null;
 let engineerChartInstance = null;
 let ataPieChartInstance = null;
 
@@ -888,6 +912,8 @@ function renderStats() {
 function renderAllCharts() {
     updateFilterSummary();
     renderATAChart();
+    renderATAChartByFleet('350');
+    renderATAChartByFleet('330');
     renderEngineerChart();
 }
 
@@ -970,6 +996,75 @@ function renderATAChart() {
             }
         }
     });
+}
+
+function renderATAChartByFleet(fleetKeyword) {
+    const canvasId = fleetKeyword === '350' ? 'ata350Chart' : 'ata330Chart';
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const existing = fleetKeyword === '350' ? ata350ChartInstance : ata330ChartInstance;
+    if (existing) { existing.destroy(); }
+
+    const fleetData = filteredData.filter(d => String(d.fleet).includes(fleetKeyword));
+
+    const ataCounts = {};
+    for (const item of fleetData) {
+        const ata = item.ata || '未知';
+        ataCounts[ata] = (ataCounts[ata] || 0) + 1;
+    }
+
+    let entries = Object.entries(ataCounts).sort((a, b) => b[1] - a[1]);
+    const maxItems = 20;
+    if (entries.length > maxItems) entries = entries.slice(0, maxItems);
+
+    const labels = entries.map(e => e[0]);
+    const data = entries.map(e => e[1]);
+
+    if (labels.length === 0) return;
+
+    const fleetLabel = fleetKeyword === '350' ? 'A350' : 'A330';
+    const chart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: fleetLabel + ' 数量',
+                data,
+                backgroundColor: fleetKeyword === '350' ? '#8b5cf6' : '#06b6d4',
+                borderRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            onClick: (event, elements, chart) => {
+                if (elements.length > 0) {
+                    const ataChapter = chart.data.labels[elements[0].index];
+                    showATAPieChart(ataChapter, fleetKeyword);
+                }
+            },
+            onHover: (event, elements) => {
+                event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+            },
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } },
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        font: { size: 10 },
+                        callback: function(value, index) {
+                            return [this.getLabelForValue(value), `${data[index]}项`];
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    if (fleetKeyword === '350') ata350ChartInstance = chart;
+    else ata330ChartInstance = chart;
 }
 
 function renderEngineerChart() {
@@ -1441,8 +1536,14 @@ function exportData() {
 // ============================================================
 // ATA PIE CHART MODAL
 // ============================================================
-function showATAPieChart(ataChapter) {
-    const items = filteredData.filter(d => String(d.ata || '未知').trim() === String(ataChapter).trim());
+function showATAPieChart(ataChapter, fleetKeyword) {
+    let items = filteredData.filter(d => String(d.ata || '未知').trim() === String(ataChapter).trim());
+    if (fleetKeyword) {
+        items = items.filter(d => String(d.fleet).includes(fleetKeyword));
+    }
+
+    const fleetLabel = fleetKeyword ? (fleetKeyword === '350' ? '（A350）' : '（A330）') : '';
+
     const causeCounts = {};
     for (const item of items) {
         const cause = hasVal(item.fault_classification) ? String(item.fault_classification).trim() : '未定性';
@@ -1456,7 +1557,7 @@ function showATAPieChart(ataChapter) {
     const emptyEl = document.getElementById('ata-modal-empty');
     const canvas = document.getElementById('ataPieChart');
 
-    document.getElementById('ata-modal-title').textContent = `ATA ${ataChapter} 故障原因分布`;
+    document.getElementById('ata-modal-title').textContent = `ATA ${ataChapter} 故障原因分布${fleetLabel}`;
     document.getElementById('ata-modal-subtitle').textContent = `共 ${items.length} 项工程调查`;
 
     const parts = [];
@@ -1466,6 +1567,7 @@ function showATAPieChart(ataChapter) {
             parts.push(`${f.label}: ${selected.join('、')}`);
         }
     }
+    if (fleetKeyword) parts.push(`机型: ${fleetKeyword === '350' ? 'A350' : 'A330'}`);
     const dateFrom = document.getElementById('date-from')?.value;
     const dateTo = document.getElementById('date-to')?.value;
     if (dateFrom) parts.push(`开始日期从 ${dateFrom}`);
