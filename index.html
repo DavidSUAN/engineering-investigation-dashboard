@@ -1616,7 +1616,21 @@ function showTodoBoard() {
 
             const wgCell = document.createElement('div');
             wgCell.className = 'px-4 py-3 text-gray-700 whitespace-pre-wrap';
-            wgCell.textContent = item.wg_tracking || '-';
+
+            const label = item._todoLabel;
+            if (label) {
+                const badge = document.createElement('span');
+                badge.className = 'text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200 font-medium';
+                badge.textContent = label;
+                wgCell.appendChild(badge);
+                const sep = document.createElement('span');
+                sep.className = 'inline-block w-2';
+                wgCell.appendChild(sep);
+            }
+
+            const wgText = document.createElement('span');
+            wgText.textContent = item.wg_tracking || '-';
+            wgCell.appendChild(wgText);
 
             const engCell = document.createElement('div');
             engCell.className = 'px-4 py-3 text-gray-600';
