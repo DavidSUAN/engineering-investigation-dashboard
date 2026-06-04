@@ -293,7 +293,7 @@ let allData = [];
 let filteredData = [];
 let uniqueValues = {};
 let activeFilters = {};
-let filtersVisible = false;
+let filtersVisible = true;
 let ataChartInstance = null;
 let engineerChartInstance = null;
 let ataPieChartInstance = null;
@@ -1340,6 +1340,10 @@ function showDashboardPage() {
     document.getElementById('upload-page').classList.add('hidden');
     document.getElementById('detail-page').classList.add('hidden');
     document.getElementById('dashboard-page').classList.remove('hidden');
+    if (filtersVisible) {
+        document.getElementById('filter-panel').classList.remove('hidden');
+        document.getElementById('filter-chevron').style.transform = 'rotate(180deg)';
+    }
     window.scrollTo(0, 0);
 }
 
@@ -1468,14 +1472,13 @@ function showATAPieChart(ataChapter) {
                 onClick: (event, elements, chart) => {
                     if (elements.length > 0) {
                         const causeName = chart.data.labels[elements[0].index];
-                        closeATAModal();
-                        if (causeName === '未定性') {
-                            activeFilters['ata'] = [ataChapter];
-                            updateDropdownUI('ata');
-                        } else {
+                        activeFilters['ata'] = [ataChapter];
+                        updateDropdownUI('ata');
+                        if (causeName !== '未定性') {
                             activeFilters['fault_classification'] = [causeName];
                             updateDropdownUI('fault_classification');
                         }
+                        closeATAModal();
                         applyFilters();
                         document.getElementById('zones-container').scrollIntoView({ behavior: 'smooth' });
                     }
