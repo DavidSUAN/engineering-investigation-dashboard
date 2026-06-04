@@ -274,16 +274,14 @@
                 </button>
             </div>
             <div class="flex-1 overflow-auto p-5">
-                <table class="w-full text-sm border-separate" id="todo-table" style="border-spacing:0">
-                    <thead>
-                        <tr>
-                            <th class="sticky top-0 z-20 text-left px-4 py-3 border-b-2 border-gray-200 font-semibold text-gray-700 bg-gray-100" style="width:40%">工程调查名称</th>
-                            <th class="sticky top-0 z-20 text-left px-4 py-3 border-b-2 border-gray-200 font-semibold text-gray-700 bg-gray-100" style="width:40%">待办事项</th>
-                            <th class="sticky top-0 z-20 text-left px-4 py-3 border-b-2 border-gray-200 font-semibold text-gray-700 bg-gray-100" style="width:20%">工程师</th>
-                        </tr>
-                    </thead>
-                    <tbody id="todo-table-body"></tbody>
-                </table>
+                <div class="w-full text-sm">
+                    <div class="sticky top-0 z-20 grid bg-gray-100" style="grid-template-columns:40% 40% 20%">
+                        <div class="text-left px-4 py-3 border-b-2 border-gray-200 font-semibold text-gray-700">工程调查名称</div>
+                        <div class="text-left px-4 py-3 border-b-2 border-gray-200 font-semibold text-gray-700">待办事项</div>
+                        <div class="text-left px-4 py-3 border-b-2 border-gray-200 font-semibold text-gray-700">工程师</div>
+                    </div>
+                    <div id="todo-table-body"></div>
+                </div>
                 <div id="todo-modal-empty" class="hidden text-center text-gray-400 text-sm py-12">暂无待办事项数据</div>
             </div>
         </div>
@@ -1599,37 +1597,35 @@ function showTodoBoard() {
 
     const tbody = document.getElementById('todo-table-body');
     const emptyEl = document.getElementById('todo-modal-empty');
-    const table = document.getElementById('todo-table');
 
     tbody.innerHTML = '';
 
     if (todoItems.length === 0) {
-        table.style.display = 'none';
         emptyEl.classList.remove('hidden');
     } else {
-        table.style.display = '';
         emptyEl.classList.add('hidden');
 
         for (const item of todoItems) {
-            const tr = document.createElement('tr');
-            tr.className = 'border-b border-gray-100 hover:bg-gray-50 transition';
+            const row = document.createElement('div');
+            row.className = 'grid border-b border-gray-100 hover:bg-gray-50 transition';
+            row.style.cssText = 'grid-template-columns:40% 40% 20%';
 
-            const desCell = document.createElement('td');
-            desCell.className = 'px-4 py-3 text-gray-800 align-top';
+            const desCell = document.createElement('div');
+            desCell.className = 'px-4 py-3 text-gray-800';
             desCell.textContent = item.fault_des || '-';
 
-            const wgCell = document.createElement('td');
-            wgCell.className = 'px-4 py-3 text-gray-700 whitespace-pre-wrap align-top';
+            const wgCell = document.createElement('div');
+            wgCell.className = 'px-4 py-3 text-gray-700 whitespace-pre-wrap';
             wgCell.textContent = item.wg_tracking || '-';
 
-            const engCell = document.createElement('td');
-            engCell.className = 'px-4 py-3 text-gray-600 align-top';
+            const engCell = document.createElement('div');
+            engCell.className = 'px-4 py-3 text-gray-600';
             engCell.textContent = item.tmc_engineer || '-';
 
-            tr.appendChild(desCell);
-            tr.appendChild(wgCell);
-            tr.appendChild(engCell);
-            tbody.appendChild(tr);
+            row.appendChild(desCell);
+            row.appendChild(wgCell);
+            row.appendChild(engCell);
+            tbody.appendChild(row);
         }
     }
 
