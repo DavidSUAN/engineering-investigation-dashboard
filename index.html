@@ -285,7 +285,7 @@
 
     <!-- Todo Board Modal -->
     <div id="todo-modal" class="fixed inset-0 z-50 hidden items-center justify-center" style="background:rgba(0,0,0,0.4);">
-        <div id="todo-modal-box" class="bg-white rounded-xl shadow-2xl mx-4 fade-in" style="width:90vw;max-width:1100px;max-height:85vh;display:flex;flex-direction:column;" onclick="event.stopPropagation()">
+        <div id="todo-modal-box" class="bg-white rounded-xl shadow-2xl mx-4 fade-in" style="width:90vw;max-width:1100px;max-height:85vh;display:flex;flex-direction:column;" onclick="closeTodoEngineerDropdown();event.stopPropagation()">
             <div class="px-5 py-4 flex items-center justify-between border-b border-gray-200 flex-shrink-0">
                 <div>
                     <span class="font-semibold text-gray-800">待办事项看板</span>
@@ -299,7 +299,20 @@
                 <div class="grid bg-gray-100 flex-shrink-0 px-5 pt-5" style="grid-template-columns:40% 40% 20%">
                     <div class="text-left px-4 py-3 border-b-2 border-gray-200 font-semibold text-gray-700">工程调查名称</div>
                     <div class="text-left px-4 py-3 border-b-2 border-gray-200 font-semibold text-gray-700">待办事项</div>
-                    <div class="text-left px-4 py-3 border-b-2 border-gray-200 font-semibold text-gray-700">工程师</div>
+                    <div class="text-left px-4 py-3 border-b-2 border-gray-200 font-semibold text-gray-700 flex items-center gap-1">
+                        <span id="todo-engineer-label" class="text-gray-700">工程师</span>
+                        <div class="relative">
+                            <button id="todo-engineer-btn" onclick="toggleTodoEngineerDropdown(event)" class="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition flex-shrink-0">
+                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                            </button>
+                            <div id="todo-engineer-panel" class="hidden absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-30" style="min-width:160px;" onclick="event.stopPropagation()">
+                                <div class="dropdown-panel p-1" id="todo-engineer-options"></div>
+                                <div class="border-t border-gray-100 p-1">
+                                    <button onclick="resetTodoEngineerFilter()" id="todo-engineer-reset-btn" class="hidden w-full text-left px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded">清除筛选</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="flex-1 overflow-auto px-5 pb-5">
                     <div id="todo-table-body" class="w-full text-sm"></div>
@@ -348,6 +361,7 @@ let ata330ChartInstance = null;
 let engineerChartInstance = null;
 let ataPieChartInstance = null;
 let cameFromTodoBoard = false;
+let todoEngineerFilter = [];
 
 // ============================================================
 // CONFIGURATION
@@ -1712,9 +1726,86 @@ function closeATAModal() {
 // TODO BOARD
 // ============================================================
 function showTodoBoard() {
-    const todoItems = filteredData.filter(d => hasVal(d.wg_tracking));
+    setupTodoEngineerFilter();
+    renderTodoTable();
 
-    document.getElementById('todo-modal-count').textContent = `共 ${todoItems.length} 项待办`;
+    const modal = document.getElementById('todo-modal');
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    modal.onclick = (e) => { if (e.target === modal) { closeTodoEngineerDropdown(); closeTodoModal(); } };
+}
+
+function setupTodoEngineerFilter() {
+    const todoItems = filteredData.filter(d => hasVal(d.wg_tracking));
+    const engineers = new Set();
+    for (const item of todoItems) {
+        const eng = item.tmc_engineer;
+        if (hasVal(eng)) engineers.add(String(eng).trim());
+    }
+    const engList = [...engineers].sort();
+
+    const options = document.getElementById('todo-engineer-options');
+    let html = '';
+    for (const eng of engList) {
+        const checked = todoEngineerFilter.includes(eng) ? 'checked' : '';
+        html += `<label class="dropdown-option" onclick="event.stopPropagation()">
+            <input type="checkbox" value="${eng}" ${checked} onchange="onTodoEngineerFilterChange()">
+            <span class="text-sm truncate">${eng}</span>
+        </label>`;
+    }
+    options.innerHTML = html;
+
+    updateTodoEngineerLabel();
+}
+
+function toggleTodoEngineerDropdown(e) {
+    e.stopPropagation();
+    const panel = document.getElementById('todo-engineer-panel');
+    panel.classList.toggle('hidden');
+}
+
+function closeTodoEngineerDropdown() {
+    document.getElementById('todo-engineer-panel').classList.add('hidden');
+}
+
+function onTodoEngineerFilterChange() {
+    const checkboxes = document.getElementById('todo-engineer-options').querySelectorAll('input[type="checkbox"]:checked');
+    todoEngineerFilter = [...checkboxes].map(cb => cb.value);
+    updateTodoEngineerLabel();
+    renderTodoTable();
+}
+
+function updateTodoEngineerLabel() {
+    const label = document.getElementById('todo-engineer-label');
+    const resetBtn = document.getElementById('todo-engineer-reset-btn');
+    const filterBtn = document.getElementById('todo-engineer-btn');
+    if (todoEngineerFilter.length === 0) {
+        label.textContent = '工程师';
+        label.className = 'text-gray-700';
+        filterBtn.className = 'w-5 h-5 flex items-center justify-center rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition flex-shrink-0';
+        resetBtn.classList.add('hidden');
+    } else {
+        label.textContent = `工程师 (${todoEngineerFilter.length})`;
+        label.className = 'text-blue-600 font-semibold';
+        filterBtn.className = 'w-5 h-5 flex items-center justify-center rounded bg-blue-100 text-blue-600 hover:bg-blue-200 transition flex-shrink-0';
+        resetBtn.classList.remove('hidden');
+    }
+}
+
+function resetTodoEngineerFilter() {
+    todoEngineerFilter = [];
+    setupTodoEngineerFilter();
+    renderTodoTable();
+}
+
+function renderTodoTable() {
+    let todoItems = filteredData.filter(d => hasVal(d.wg_tracking));
+
+    if (todoEngineerFilter.length > 0) {
+        todoItems = todoItems.filter(d => todoEngineerFilter.includes(String(d.tmc_engineer || '').trim()));
+    }
+
+    document.getElementById('todo-modal-count').textContent = `共 ${todoItems.length} 项工程调查存在待办事项`;
 
     const tbody = document.getElementById('todo-table-body');
     const emptyEl = document.getElementById('todo-modal-empty');
@@ -1775,17 +1866,13 @@ function showTodoBoard() {
             tbody.appendChild(row);
         }
     }
-
-    const modal = document.getElementById('todo-modal');
-    modal.classList.remove('hidden');
-    modal.style.display = 'flex';
-    modal.onclick = (e) => { if (e.target === modal) closeTodoModal(); };
 }
 
 function closeTodoModal() {
     const modal = document.getElementById('todo-modal');
     modal.classList.add('hidden');
     modal.style.display = '';
+    closeTodoEngineerDropdown();
 }
 
 // ============================================================
