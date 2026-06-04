@@ -261,34 +261,6 @@
     <!-- Click outside dropdown handler -->
     <div id="dropdown-overlay" class="fixed inset-0 z-10 hidden" onclick="closeAllDropdowns()"></div>
 
-    <!-- Todo Board Modal -->
-    <div id="todo-modal" class="fixed inset-0 z-50 hidden items-center justify-center" style="background:rgba(0,0,0,0.4);">
-        <div id="todo-modal-box" class="bg-white rounded-xl shadow-2xl mx-4 fade-in" style="width:90vw;max-width:1100px;max-height:85vh;display:flex;flex-direction:column;" onclick="event.stopPropagation()">
-            <div class="px-5 py-4 flex items-center justify-between border-b border-gray-200 flex-shrink-0">
-                <div>
-                    <span class="font-semibold text-gray-800">待办事项看板</span>
-                    <span class="text-sm text-gray-400 ml-2" id="todo-modal-count"></span>
-                </div>
-                <button onclick="closeTodoModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
-            </div>
-            <div class="flex-1 overflow-auto p-5">
-                <table class="w-full text-sm border-collapse" id="todo-table">
-                    <thead class="sticky top-0 z-10">
-                        <tr class="bg-gray-100">
-                            <th class="text-left px-4 py-3 border-b-2 border-gray-200 font-semibold text-gray-700" style="width:40%">工程调查名称</th>
-                            <th class="text-left px-4 py-3 border-b-2 border-gray-200 font-semibold text-gray-700" style="width:40%">待办事项</th>
-                            <th class="text-left px-4 py-3 border-b-2 border-gray-200 font-semibold text-gray-700" style="width:20%">工程师</th>
-                        </tr>
-                    </thead>
-                    <tbody id="todo-table-body"></tbody>
-                </table>
-                <div id="todo-modal-empty" class="hidden text-center text-gray-400 text-sm py-12">暂无待办事项数据</div>
-            </div>
-        </div>
-    </div>
-
     <!-- ATA Fault Cause Modal -->
     <div id="ata-modal" class="fixed inset-0 z-50 hidden items-center justify-center" style="background:rgba(0,0,0,0.4);">
         <div id="ata-modal-box" class="bg-white rounded-xl shadow-2xl mx-4 fade-in" onclick="event.stopPropagation()">
@@ -715,8 +687,7 @@ function buildFilters() {
         wrapper.id = `filter-${f.key}`;
 
         const btn = document.createElement('button');
-        const btnClasses = 'text-left px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white hover:border-gray-400 transition flex items-center justify-between gap-1';
-        btn.className = f.key === '_has_todo' ? btnClasses + ' flex-1' : 'w-full ' + btnClasses;
+        btn.className = 'w-full text-left px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white hover:border-gray-400 transition flex items-center justify-between gap-1';
         btn.onclick = (e) => { e.stopPropagation(); toggleDropdown(f.key); };
 
         const labelSpan = document.createElement('span');
@@ -742,19 +713,6 @@ function buildFilters() {
         btn.appendChild(resetBtn);
         btn.appendChild(chevron);
         wrapper.appendChild(btn);
-
-        if (f.key === '_has_todo') {
-            wrapper.style.display = 'flex';
-            wrapper.style.gap = '8px';
-            wrapper.style.alignItems = 'center';
-
-            const todoBtn = document.createElement('button');
-            todoBtn.id = 'todo-board-btn';
-            todoBtn.className = 'hidden flex-shrink-0 px-2.5 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-xs font-medium whitespace-nowrap leading-5';
-            todoBtn.textContent = '待办看板';
-            todoBtn.onclick = (e) => { e.stopPropagation(); showTodoBoard(); };
-            wrapper.appendChild(todoBtn);
-        }
 
         const panel = document.createElement('div');
         panel.id = `panel-${f.key}`;
@@ -830,13 +788,6 @@ function updateDropdownUI(key) {
         label.textContent = selected.join('、');
         label.className = 'truncate text-blue-600 font-medium';
         if (resetBtn) resetBtn.classList.remove('hidden');
-    }
-
-    if (key === '_has_todo') {
-        const todoBtn = document.getElementById('todo-board-btn');
-        if (todoBtn) {
-            todoBtn.classList.toggle('hidden', !selected.includes('有'));
-        }
     }
 
     const checkboxes = document.getElementById(`options-${key}`).querySelectorAll('input[type="checkbox"]');
@@ -1590,68 +1541,12 @@ function closeATAModal() {
 }
 
 // ============================================================
-// TODO BOARD
-// ============================================================
-function showTodoBoard() {
-    const todoItems = filteredData.filter(d => hasVal(d.wg_tracking));
-
-    document.getElementById('todo-modal-count').textContent = `共 ${todoItems.length} 项待办`;
-
-    const tbody = document.getElementById('todo-table-body');
-    const emptyEl = document.getElementById('todo-modal-empty');
-    const table = document.getElementById('todo-table');
-
-    tbody.innerHTML = '';
-
-    if (todoItems.length === 0) {
-        table.style.display = 'none';
-        emptyEl.classList.remove('hidden');
-    } else {
-        table.style.display = '';
-        emptyEl.classList.add('hidden');
-
-        for (const item of todoItems) {
-            const tr = document.createElement('tr');
-            tr.className = 'border-b border-gray-100 hover:bg-gray-50 transition';
-
-            const desCell = document.createElement('td');
-            desCell.className = 'px-4 py-3 text-gray-800 align-top';
-            desCell.textContent = item.fault_des || '-';
-
-            const wgCell = document.createElement('td');
-            wgCell.className = 'px-4 py-3 text-gray-700 whitespace-pre-wrap align-top';
-            wgCell.textContent = item.wg_tracking || '-';
-
-            const engCell = document.createElement('td');
-            engCell.className = 'px-4 py-3 text-gray-600 align-top';
-            engCell.textContent = item.tmc_engineer || '-';
-
-            tr.appendChild(desCell);
-            tr.appendChild(wgCell);
-            tr.appendChild(engCell);
-            tbody.appendChild(tr);
-        }
-    }
-
-    const modal = document.getElementById('todo-modal');
-    modal.classList.remove('hidden');
-    modal.style.display = 'flex';
-    modal.onclick = (e) => { if (e.target === modal) closeTodoModal(); };
-}
-
-function closeTodoModal() {
-    const modal = document.getElementById('todo-modal');
-    modal.classList.add('hidden');
-    modal.style.display = '';
-}
-
-// ============================================================
 // INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
     initUpload();
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') { closeAllDropdowns(); closeATAModal(); closeTodoModal(); }
+        if (e.key === 'Escape') { closeAllDropdowns(); closeATAModal(); }
     });
 });
 </script>
