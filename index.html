@@ -986,6 +986,7 @@ function renderATAChart() {
                 y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } },
                 x: {
                     ticks: {
+                        autoSkip: false,
                         maxRotation: 45,
                         font: { size: 10 },
                         callback: function(value, index) {
@@ -1052,6 +1053,7 @@ function renderATAChartByFleet(fleetKeyword) {
                 y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } },
                 x: {
                     ticks: {
+                        autoSkip: false,
                         maxRotation: 45,
                         font: { size: 10 },
                         callback: function(value, index) {
