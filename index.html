@@ -1607,8 +1607,9 @@ function showTodoBoard() {
 
         for (const item of todoItems) {
             const row = document.createElement('div');
-            row.className = 'grid border-b border-gray-100 hover:bg-gray-50 transition';
+            row.className = 'grid border-b border-gray-100 hover:bg-gray-50 transition cursor-pointer';
             row.style.cssText = 'grid-template-columns:40% 40% 20%';
+            row.onclick = () => { closeTodoModal(); showDetail(item._index); };
 
             const desCell = document.createElement('div');
             desCell.className = 'px-4 py-3 text-gray-800';
