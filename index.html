@@ -82,26 +82,43 @@
 
             <div class="flex items-center gap-3 my-5">
                 <div class="flex-1 h-px bg-gray-200"></div>
-                <span class="text-sm text-gray-400">或从服务器/本地路径获取</span>
+                <span class="text-sm text-gray-400">推荐方式 —— 无需安装任何东西</span>
                 <div class="flex-1 h-px bg-gray-200"></div>
             </div>
 
-            <div class="flex gap-2">
-                <input type="text" id="server-path" placeholder="输入路径，如 http://192.168.1.100:8080/data.xlsx 或 C:\Users\Documents\data.xlsx"
-                       class="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-                       onkeydown="if(event.key==='Enter') fetchFromServer()">
-                <button onclick="fetchFromServer()" id="fetch-btn"
-                        class="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium flex items-center gap-1.5 flex-shrink-0">
+            <!-- Folder Picker (File System Access API) -->
+            <div id="folder-picker-section" class="bg-white border border-gray-200 rounded-xl p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="font-semibold text-gray-700 text-sm">📁 选择文件夹自动加载</span>
+                    <span class="text-xs text-gray-400">Chrome / Edge 浏览器</span>
+                </div>
+                <p class="text-xs text-gray-500 mb-3">选择一个包含 .xlsx 文件的文件夹，自动扫描并列出可用的工程调查跟踪单。之后每次打开看板点"刷新数据"即可获取最新版本。</p>
+                <button onclick="selectFolder()" id="select-folder-btn"
+                        class="w-full px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium flex items-center justify-center gap-2">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
                     </svg>
-                    获取
+                    选择文件夹
                 </button>
+                <div id="folder-file-list" class="mt-3 space-y-1 hidden"></div>
+                <div id="folder-empty" class="hidden mt-3 text-center text-gray-400 text-xs py-3">该文件夹下没有找到 .xlsx 文件</div>
             </div>
-            <div class="mt-2 space-y-1">
-                <p class="text-xs text-gray-400">• HTTP/HTTPS 地址：直接从服务器获取（需本地服务器提供文件访问）</p>
-                <p class="text-xs text-gray-400">• 本地文件路径：如 <code class="bg-gray-100 px-1 rounded">C:\Users\Documents\data.xlsx</code> 或 <code class="bg-gray-100 px-1 rounded">/Users/david/data.xlsx</code></p>
-                <p class="text-xs text-orange-500">⚠️ 本地路径需要配合本地文件服务脚本使用（详见 README）</p>
+            <div id="folder-unsupported" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700 text-center">
+                ⚠️ 当前浏览器不支持此功能，请使用 <strong>Chrome</strong> 或 <strong>Edge</strong> 打开本页面
+            </div>
+
+            <div class="mt-5 bg-gray-50 border border-gray-200 rounded-xl p-4">
+                <p class="text-sm font-semibold text-gray-700 mb-3">💡 两种加载方式</p>
+                <div class="space-y-2.5 text-sm text-gray-600">
+                    <div class="flex gap-2">
+                        <span class="flex-shrink-0 w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">1</span>
+                        <div><strong>直接拖拽上传</strong>：把 .xlsx 文件拖到上方区域，最快最简单。</div>
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="flex-shrink-0 w-5 h-5 rounded-full bg-green-600 text-white text-xs flex items-center justify-center font-bold">2</span>
+                        <div><strong>选择文件夹（推荐）</strong>：点"选择文件夹"选一个目录，自动列出 Excel 文件。后续点"刷新数据"即可获取最新版，无需每次重新上传。不需要安装任何东西。</div>
+                    </div>
+                </div>
             </div>
 
             <div id="upload-error" class="hidden mt-4 text-center text-red-500 text-sm"></div>
@@ -116,7 +133,7 @@
                 <h1 class="text-lg font-bold text-gray-800">TMC空客组工程调查看板</h1>
                 <div class="flex items-center gap-3">
                     <span id="data-info" class="text-sm text-gray-400"></span>
-                    <button id="refresh-server-btn" onclick="refreshFromServer()" class="hidden text-sm px-3 py-1.5 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 transition flex items-center gap-1.5">
+                    <button id="refresh-server-btn" onclick="refreshFromFolder()" class="hidden text-sm px-3 py-1.5 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 transition flex items-center gap-1.5">
                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                         </svg>
@@ -362,6 +379,9 @@ let engineerChartInstance = null;
 let ataPieChartInstance = null;
 let cameFromTodoBoard = false;
 let todoEngineerFilter = [];
+let folderDirHandle = null;
+let activeFolderFileHandle = null;
+let activeFolderFileName = null;
 
 // ============================================================
 // CONFIGURATION
@@ -579,9 +599,10 @@ function initUpload() {
     dropZone = document.getElementById('drop-zone');
     fileInput = document.getElementById('file-input');
 
-    const savedPath = localStorage.getItem('serverPath');
-    if (savedPath) {
-        document.getElementById('server-path').value = savedPath;
+    // Check if File System Access API is supported
+    if (!window.showDirectoryPicker) {
+        document.getElementById('folder-picker-section').classList.add('hidden');
+        document.getElementById('folder-unsupported').classList.remove('hidden');
     }
 
     dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
@@ -618,72 +639,100 @@ function handleFile(file) {
     reader.readAsArrayBuffer(file);
 }
 
-async function fetchFromServer() {
-    const pathInput = document.getElementById('server-path');
-    const fetchBtn = document.getElementById('fetch-btn');
+
+async function loadFromFolderViaFileHandle(fileHandle) {
     const errEl = document.getElementById('upload-error');
     errEl.classList.add('hidden');
 
-    const input = pathInput.value.trim();
-    if (!input) {
-        errEl.textContent = '请输入服务器地址或本地文件路径';
-        errEl.classList.remove('hidden');
-        return;
-    }
-
-    const isHttp = input.startsWith('http://') || input.startsWith('https://');
-    const isLocalPath = !isHttp && (input.includes('/') || input.includes('\\'));
-
-    if (isLocalPath) {
-        errEl.innerHTML = `
-            <div class="text-left bg-orange-50 border border-orange-200 rounded-lg p-4">
-                <p class="font-medium text-orange-800 mb-2">本地文件路径检测到</p>
-                <p class="text-sm text-orange-700 mb-3">出于浏览器安全限制，无法直接读取本地文件。请选择以下方式之一：</p>
-                <ol class="text-sm text-orange-700 space-y-2 list-decimal list-inside">
-                    <li><strong>使用上传按钮</strong>：点击上方上传区域，选择文件</li>
-                    <li><strong>启动本地文件服务</strong>：运行项目中的 <code class="bg-orange-100 px-1 rounded">file-server.py</code> 脚本，然后通过 <code class="bg-orange-100 px-1 rounded">http://localhost:8765</code> 访问</li>
-                </ol>
-                <button onclick="this.parentElement.parentElement.classList.add('hidden')" class="mt-3 text-xs text-orange-600 hover:text-orange-800">关闭提示</button>
-            </div>
-        `;
-        errEl.classList.remove('hidden');
-        return;
-    }
-
-    fetchBtn.disabled = true;
-    fetchBtn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>获取中...';
-
     try {
-        const response = await fetch(input);
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const file = await fileHandle.getFile();
+        if (!file.name.match(/\.xlsx?$/i)) {
+            errEl.textContent = '请选择 .xlsx 格式的文件';
+            errEl.classList.remove('hidden');
+            return;
         }
 
-        const buffer = await response.arrayBuffer();
-        localStorage.setItem('serverPath', input);
+        const buffer = await file.arrayBuffer();
+        activeFolderFileHandle = fileHandle;
+        activeFolderFileName = file.name;
         parseExcel(buffer);
-        document.getElementById('refresh-server-btn').classList.remove('hidden');
     } catch (err) {
-        errEl.textContent = '获取文件失败: ' + err.message;
+        errEl.textContent = '文件读取失败: ' + err.message;
         errEl.classList.remove('hidden');
-    } finally {
-        fetchBtn.disabled = false;
-        fetchBtn.innerHTML = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>获取';
     }
 }
 
-async function refreshFromServer() {
-    const url = localStorage.getItem('serverPath');
-    if (!url) return;
+async function selectFolder() {
+    const errEl = document.getElementById('upload-error');
+    errEl.classList.add('hidden');
+
+    if (!window.showDirectoryPicker) {
+        document.getElementById('folder-unsupported').classList.remove('hidden');
+        return;
+    }
+
+    try {
+        folderDirHandle = await window.showDirectoryPicker();
+        await scanFolder();
+    } catch (err) {
+        if (err.name !== 'AbortError') {
+            errEl.textContent = '文件夹选择失败: ' + err.message;
+            errEl.classList.remove('hidden');
+        }
+    }
+}
+
+async function scanFolder() {
+    if (!folderDirHandle) return;
+
+    const fileList = document.getElementById('folder-file-list');
+    const emptyEl = document.getElementById('folder-empty');
+    const xlsxFiles = [];
+
+    for await (const [name, handle] of folderDirHandle.entries()) {
+        if (handle.kind === 'file' && name.match(/\.xlsx?$/i)) {
+            xlsxFiles.push({ name, handle });
+        }
+    }
+
+    xlsxFiles.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
+
+    if (xlsxFiles.length === 0) {
+        fileList.classList.add('hidden');
+        emptyEl.classList.remove('hidden');
+        return;
+    }
+
+    emptyEl.classList.add('hidden');
+    fileList.classList.remove('hidden');
+
+    fileList.innerHTML = xlsxFiles.map(f => `
+        <button onclick="loadFromFolderViaFileHandle(/*handle*/)" data-filename="${f.name.replace(/"/g, '&quot;')}"
+                class="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 transition border border-gray-100 hover:border-green-200 flex items-center gap-2">
+            <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <span class="truncate">${f.name}</span>
+        </button>
+    `).join('');
+
+    // Bind click handlers with the actual handle references
+    const buttons = fileList.querySelectorAll('button');
+    buttons.forEach((btn, i) => {
+        btn.onclick = () => loadFromFolderViaFileHandle(xlsxFiles[i].handle);
+    });
+}
+
+async function refreshFromFolder() {
+    if (!activeFolderFileHandle) return;
 
     const refreshBtn = document.getElementById('refresh-server-btn');
     refreshBtn.disabled = true;
     refreshBtn.innerHTML = '<svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>刷新中...';
 
     try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const buffer = await response.arrayBuffer();
+        const file = await activeFolderFileHandle.getFile();
+        const buffer = await file.arrayBuffer();
         parseExcel(buffer);
     } catch (err) {
         alert('刷新失败: ' + err.message);
@@ -1586,6 +1635,12 @@ function showDashboardPage() {
     if (filtersVisible) {
         document.getElementById('filter-panel').classList.remove('hidden');
         document.getElementById('filter-chevron').style.transform = 'rotate(180deg)';
+    }
+
+    const refreshBtn = document.getElementById('refresh-server-btn');
+    if (activeFolderFileHandle) {
+        refreshBtn.classList.remove('hidden');
+        refreshBtn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>刷新数据';
     }
     window.scrollTo(0, 0);
 }
