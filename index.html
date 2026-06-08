@@ -256,6 +256,30 @@
                 </div>
             </div>
 
+            <!-- Fleet Monthly Trend Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="bg-white rounded-xl shadow-sm p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="font-semibold text-gray-700">工程调查月度趋势（A350）</span>
+                        <span class="text-xs text-gray-400">固定筛选机型 A350</span>
+                    </div>
+                    <div id="monthly-trend-350-summary" class="text-xs text-gray-500 mb-3 px-2 py-1.5 bg-gray-50 rounded border border-gray-100"></div>
+                    <div style="position:relative; height:280px;">
+                        <canvas id="monthlyTrend350Chart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="font-semibold text-gray-700">工程调查月度趋势（A330）</span>
+                        <span class="text-xs text-gray-400">固定筛选机型 A330</span>
+                    </div>
+                    <div id="monthly-trend-330-summary" class="text-xs text-gray-500 mb-3 px-2 py-1.5 bg-gray-50 rounded border border-gray-100"></div>
+                    <div style="position:relative; height:280px;">
+                        <canvas id="monthlyTrend330Chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
             <!-- Engineer Chart -->
             <div class="bg-white rounded-xl shadow-sm p-5">
                 <div class="flex items-center justify-between mb-4">
@@ -399,6 +423,8 @@ let ata330ChartInstance = null;
 let engineerChartInstance = null;
 let ataPieChartInstance = null;
 let monthlyTrendChartInstance = null;
+let monthlyTrend350ChartInstance = null;
+let monthlyTrend330ChartInstance = null;
 let monthOffset = 0;
 let cameFromTodoBoard = false;
 let todoEngineerFilter = [];
@@ -1139,6 +1165,8 @@ function renderAllCharts() {
     renderATAChartByFleet('350');
     renderATAChartByFleet('330');
     renderMonthlyTrendChart();
+    renderMonthlyTrendChartByFleet('350');
+    renderMonthlyTrendChartByFleet('330');
     renderEngineerChart();
 }
 
@@ -1415,6 +1443,123 @@ function renderMonthlyTrendChart() {
             }
         }]
     });
+}
+
+function renderMonthlyTrendChartByFleet(fleetKeyword) {
+    const canvasId = fleetKeyword === '350' ? 'monthlyTrend350Chart' : 'monthlyTrend330Chart';
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const existing = fleetKeyword === '350' ? monthlyTrend350ChartInstance : monthlyTrend330ChartInstance;
+    if (existing) { existing.destroy(); }
+
+    const fleetLabel = fleetKeyword === '350' ? 'A350' : 'A330';
+    const fleetData = filteredData.filter(d => String(d.fleet).includes(fleetKeyword));
+
+    const now = new Date();
+    const endMonth = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
+    const startMonth = new Date(endMonth);
+    startMonth.setMonth(startMonth.getMonth() - 11);
+
+    const summaryEl = document.getElementById(`monthly-trend-${fleetKeyword}-summary`);
+    if (summaryEl) {
+        const parts = [];
+        for (const f of FILTER_CONFIG) {
+            const selected = activeFilters[f.key];
+            if (selected && selected.length > 0) parts.push(`${f.label}: ${selected.join('、')}`);
+        }
+        const dateFrom = document.getElementById('date-from')?.value;
+        const dateTo = document.getElementById('date-to')?.value;
+        if (dateFrom) parts.push(`开始日期从 ${dateFrom}`);
+        if (dateTo) parts.push(`开始日期至 ${dateTo}`);
+        summaryEl.textContent = parts.length === 0 ? '筛选条件: 固定机型 ' + fleetLabel : '筛选条件: 固定机型 ' + fleetLabel + ' | ' + parts.join('  |  ');
+    }
+
+    const months = [];
+    for (let i = 0; i < 12; i++) {
+        const d = new Date(startMonth);
+        d.setMonth(d.getMonth() + i);
+        months.push({
+            key: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,
+            label: `${String(d.getMonth()+1).padStart(2,'0')}月`,
+            total: 0,
+            start: new Date(d.getFullYear(), d.getMonth(), 1),
+            end: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999)
+        });
+    }
+
+    for (const item of fleetData) {
+        if (!item._startDate) continue;
+        const sd = item._startDate;
+        for (const m of months) {
+            if (sd >= m.start && sd <= m.end) {
+                m.total++;
+                break;
+            }
+        }
+    }
+
+    const labels = months.map(m => m.label);
+    const color = fleetKeyword === '350' ? '#8b5cf6' : '#06b6d4';
+
+    const chart = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                { label: fleetLabel + ' 总数', data: months.map(m => m.total), borderColor: color, backgroundColor: fleetKeyword === '350' ? 'rgba(139,92,246,0.08)' : 'rgba(6,182,212,0.08)', fill: true, tension: 0.3, pointRadius: 5, pointHoverRadius: 7, pointBackgroundColor: color },
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            onClick: (event, elements, chart) => {
+                if (elements.length > 0) {
+                    const idx = elements[0].index;
+                    const m = months[idx];
+                    document.getElementById('date-from').value = `${m.start.getFullYear()}-${String(m.start.getMonth()+1).padStart(2,'0')}-01`;
+                    const lastDay = new Date(m.end.getFullYear(), m.end.getMonth() + 1, 0);
+                    document.getElementById('date-to').value = `${lastDay.getFullYear()}-${String(lastDay.getMonth()+1).padStart(2,'0')}-${String(lastDay.getDate()).padStart(2,'0')}`;
+                    applyFilters();
+                    document.getElementById('zones-container').scrollIntoView({ behavior: 'smooth' });
+                }
+            },
+            onHover: (event, elements) => {
+                event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y} 项` } }
+            },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 }, grace: '10%' },
+                x: { ticks: { font: { size: 11 } } }
+            },
+            layout: { padding: { top: 20 } }
+        },
+        plugins: [{
+            id: 'dataLabels',
+            afterDatasetsDraw(chart) {
+                const ctx = chart.ctx;
+                const meta = chart.getDatasetMeta(0);
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif';
+                ctx.fillStyle = '#1e293b';
+                meta.data.forEach((point, i) => {
+                    const val = chart.data.datasets[0].data[i];
+                    if (val > 0) {
+                        ctx.fillText(val, point.x, point.y - 8);
+                    }
+                });
+                ctx.restore();
+            }
+        }]
+    });
+
+    if (fleetKeyword === '350') monthlyTrend350ChartInstance = chart;
+    else monthlyTrend330ChartInstance = chart;
 }
 
 function renderEngineerChart() {
