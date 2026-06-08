@@ -1327,6 +1327,8 @@ function renderATAChartByFleet(fleetKeyword) {
 function shiftMonth(delta) {
     monthOffset = Math.max(0, monthOffset + delta);
     renderMonthlyTrendChart();
+    renderMonthlyTrendChartByFleet('350');
+    renderMonthlyTrendChartByFleet('330');
 }
 
 function shiftToNow() {
