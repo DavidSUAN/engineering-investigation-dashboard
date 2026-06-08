@@ -1377,6 +1377,9 @@ function shiftToNow() {
 function showEngineerTrend(name) {
     currentTrendEngineer = name;
     engineerTrendMonthOffset = 0;
+    activeFilters['tmc_engineer'] = [name];
+    updateDropdownUI('tmc_engineer');
+    applyFilters();
     document.getElementById('engineer-trend-modal-title').textContent = `工程调查月度趋势 — ${name}`;
     closeAllDropdowns();
     renderEngineerTrendChart();
