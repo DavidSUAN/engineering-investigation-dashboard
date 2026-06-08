@@ -284,7 +284,10 @@
             <div class="bg-white rounded-xl shadow-sm p-5">
                 <div class="flex items-center justify-between mb-4">
                     <span class="font-semibold text-gray-700">工程师工程调查统计</span>
-                    <span class="text-xs text-gray-400">悬停查看详细数据</span>
+                    <div class="flex items-center gap-2">
+                        <button id="reset-engineer-btn" class="hidden text-xs px-2 py-1 text-gray-500 border border-gray-300 rounded-md hover:bg-gray-50 transition" onclick="resetSingleFilter('tmc_engineer')">重置工程师筛选</button>
+                        <span class="text-xs text-gray-400">悬停查看详细数据</span>
+                    </div>
                 </div>
                 <div id="engineer-filter-summary" class="text-xs text-gray-500 mb-3 px-2 py-1.5 bg-gray-50 rounded border border-gray-100"></div>
                 <div style="position:relative; height:300px;">
@@ -1144,6 +1147,13 @@ function updateDropdownUI(key) {
         const todoBtn = document.getElementById('todo-board-btn');
         if (todoBtn) {
             todoBtn.classList.toggle('hidden', !selected.includes('有'));
+        }
+    }
+
+    if (key === 'tmc_engineer') {
+        const engResetBtn = document.getElementById('reset-engineer-btn');
+        if (engResetBtn) {
+            engResetBtn.classList.toggle('hidden', selected.length === 0);
         }
     }
 
