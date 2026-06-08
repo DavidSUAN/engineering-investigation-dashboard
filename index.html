@@ -1303,7 +1303,9 @@ function shiftMonth(delta) {
 
 function shiftToNow() {
     monthOffset = 0;
-    renderMonthlyTrendChart();
+    document.getElementById('date-from').value = '';
+    document.getElementById('date-to').value = '';
+    applyFilters();
 }
 
 function renderMonthlyTrendChart() {
