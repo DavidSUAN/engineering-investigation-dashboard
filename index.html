@@ -160,17 +160,17 @@
                     <div id="stat-active" class="text-3xl font-bold text-blue-600">0</div>
                     <div class="text-xs text-gray-400 mt-1">未完成调查总数</div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-red-500">
+                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-red-500 cursor-pointer hover:shadow-md transition" onclick="scrollToZone('red')">
                     <div class="text-sm text-gray-500 mb-1">超期</div>
                     <div id="stat-overdue" class="text-3xl font-bold text-red-600">0</div>
                     <div class="text-xs text-gray-400 mt-1">已过天数 ≥ 调查天数</div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-orange-500">
+                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-orange-500 cursor-pointer hover:shadow-md transition" onclick="scrollToZone('orange')">
                     <div class="text-sm text-gray-500 mb-1">注意</div>
                     <div id="stat-warning" class="text-3xl font-bold text-orange-600">0</div>
                     <div class="text-xs text-gray-400 mt-1">已过天数在 2/3~3/3 区间</div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-green-500">
+                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-green-500 cursor-pointer hover:shadow-md transition" onclick="scrollToZone('green')">
                     <div class="text-sm text-gray-500 mb-1">正常</div>
                     <div id="stat-normal" class="text-3xl font-bold text-green-600">0</div>
                     <div class="text-xs text-gray-400 mt-1">已过天数 ≤ 调查天数×2/3</div>
@@ -1343,6 +1343,13 @@ function renderEngineerChart() {
 // ============================================================
 // RENDERING - ZONES
 // ============================================================
+function scrollToZone(key) {
+    const zone = document.getElementById(`zone-${key}`);
+    if (zone) {
+        zone.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
 function renderZones() {
     const container = document.getElementById('zones-container');
     container.innerHTML = '';
@@ -1352,6 +1359,7 @@ function renderZones() {
             .sort((a, b) => (b._days ?? 0) - (a._days ?? 0));
 
         const section = document.createElement('div');
+        section.id = `zone-${zone.key}`;
         section.className = `bg-white rounded-xl shadow-sm ${zone.cssClass} fade-in`;
 
         const header = document.createElement('div');
