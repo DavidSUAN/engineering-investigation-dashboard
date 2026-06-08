@@ -814,40 +814,93 @@ function extractUniqueValues() {
     }
 }
 
-function applyFilters() {
-    const matchFilter = (item) => {
-        for (const f of FILTER_CONFIG) {
-            const selected = activeFilters[f.key];
-            if (selected && selected.length > 0) {
-                if (f.key === '_has_todo') {
-                    const hasTodo = hasVal(item.wg_tracking);
-                    if (selected.includes('有') && !hasTodo) return false;
-                    if (selected.includes('无') && hasTodo) return false;
-                } else if (f.key === 'fault_classification') {
-                    const val = normalizeFaultCause(item.fault_classification);
-                    if (!selected.includes(val)) return false;
-                } else {
-                    const val = String(item[f.key] || '').trim();
-                    if (!selected.includes(val)) return false;
-                }
+function itemMatchesFilters(item, excludeKey) {
+    for (const f of FILTER_CONFIG) {
+        if (f.key === excludeKey) continue;
+        const selected = activeFilters[f.key];
+        if (selected && selected.length > 0) {
+            if (f.key === '_has_todo') {
+                const hasTodo = hasVal(item.wg_tracking);
+                if (selected.includes('有') && !hasTodo) return false;
+                if (selected.includes('无') && hasTodo) return false;
+            } else if (f.key === 'fault_classification') {
+                const val = normalizeFaultCause(item.fault_classification);
+                if (!selected.includes(val)) return false;
+            } else {
+                const val = String(item[f.key] || '').trim();
+                if (!selected.includes(val)) return false;
             }
         }
+    }
 
-        const dateFrom = document.getElementById('date-from').value;
-        const dateTo = document.getElementById('date-to').value;
-        if (dateFrom && item._startDate) {
-            const [y, m, d] = dateFrom.split('-').map(Number);
-            if (item._startDate < new Date(y, m - 1, d)) return false;
+    const dateFrom = document.getElementById('date-from').value;
+    const dateTo = document.getElementById('date-to').value;
+    if (dateFrom && item._startDate) {
+        const [y, m, d] = dateFrom.split('-').map(Number);
+        if (item._startDate < new Date(y, m - 1, d)) return false;
+    }
+    if (dateTo && item._startDate) {
+        const [y, m, d] = dateTo.split('-').map(Number);
+        if (item._startDate > new Date(y, m - 1, d, 23, 59, 59, 999)) return false;
+    }
+
+    return true;
+}
+
+function updateDynamicUniqueValues() {
+    for (const f of FILTER_CONFIG) {
+        if (f.preset) continue;
+        if (f.key === 'fault_classification') {
+            const causeSet = new Set();
+            for (const item of allData) {
+                if (!itemMatchesFilters(item, f.key)) continue;
+                const v = normalizeFaultCause(item.fault_classification);
+                causeSet.add(v);
+            }
+            const selected = activeFilters[f.key] || [];
+            for (const v of selected) causeSet.add(v);
+            const newValues = [...causeSet].sort();
+            if (JSON.stringify(newValues) !== JSON.stringify(uniqueValues[f.key])) {
+                uniqueValues[f.key] = newValues;
+                updateDropdownContent(f.key);
+            }
+            continue;
         }
-        if (dateTo && item._startDate) {
-            const [y, m, d] = dateTo.split('-').map(Number);
-            if (item._startDate > new Date(y, m - 1, d, 23, 59, 59, 999)) return false;
+        const vals = new Set();
+        for (const item of allData) {
+            if (!itemMatchesFilters(item, f.key)) continue;
+            const v = item[f.key];
+            if (hasVal(v)) vals.add(String(v).trim());
         }
+        const selected = activeFilters[f.key] || [];
+        for (const v of selected) vals.add(v);
+        const newValues = [...vals].sort();
+        if (JSON.stringify(newValues) !== JSON.stringify(uniqueValues[f.key])) {
+            uniqueValues[f.key] = newValues;
+            updateDropdownContent(f.key);
+        }
+    }
+}
 
-        return true;
-    };
+function updateDropdownContent(key) {
+    const optionsEl = document.getElementById(`options-${key}`);
+    if (!optionsEl) return;
+    const selected = activeFilters[key] || [];
+    let html = '';
+    for (const val of uniqueValues[key]) {
+        const checked = selected.includes(val) ? 'checked' : '';
+        html += `<label class="dropdown-option" data-value="${val}">
+            <input type="checkbox" value="${val}" ${checked} onchange="onFilterChange('${key}')">
+            <span class="text-sm truncate">${val}</span>
+        </label>`;
+    }
+    optionsEl.innerHTML = html;
+}
 
-    filteredData = allData.filter(matchFilter);
+function applyFilters() {
+    filteredData = allData.filter(item => itemMatchesFilters(item, null));
+
+    updateDynamicUniqueValues();
 
     renderStats();
     renderAllCharts();
