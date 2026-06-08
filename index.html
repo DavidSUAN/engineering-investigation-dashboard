@@ -1350,16 +1350,12 @@ function renderMonthlyTrendChart() {
         data: {
             labels,
             datasets: [
-                { label: '总数', data: months.map(m => m.total), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', fill: true, tension: 0.3, pointRadius: 4, pointHoverRadius: 6, order: 3 },
-                { label: '超期', data: months.map(m => m.overdue), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)', fill: true, tension: 0.3, pointRadius: 3, pointHoverRadius: 5, order: 2 },
-                { label: '注意', data: months.map(m => m.attention), borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.08)', fill: true, tension: 0.3, pointRadius: 3, pointHoverRadius: 5, order: 1 },
-                { label: '正常', data: months.map(m => m.normal), borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.08)', fill: true, tension: 0.3, pointRadius: 3, pointHoverRadius: 5, order: 0 },
+                { label: '总数', data: months.map(m => m.total), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', fill: true, tension: 0.3, pointRadius: 5, pointHoverRadius: 7, pointBackgroundColor: '#3b82f6' },
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
             onClick: (event, elements, chart) => {
                 if (elements.length > 0) {
                     const idx = elements[0].index;
@@ -1374,12 +1370,34 @@ function renderMonthlyTrendChart() {
             onHover: (event, elements) => {
                 event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
             },
-            plugins: { legend: { position: 'top' } },
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y} 项` } }
+            },
             scales: {
                 y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } },
                 x: { ticks: { font: { size: 11 } } }
             }
-        }
+        },
+        plugins: [{
+            id: 'dataLabels',
+            afterDatasetsDraw(chart) {
+                const ctx = chart.ctx;
+                const meta = chart.getDatasetMeta(0);
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif';
+                ctx.fillStyle = '#1e293b';
+                meta.data.forEach((point, i) => {
+                    const val = chart.data.datasets[0].data[i];
+                    if (val > 0) {
+                        ctx.fillText(val, point.x, point.y - 8);
+                    }
+                });
+                ctx.restore();
+            }
+        }]
     });
 }
 
