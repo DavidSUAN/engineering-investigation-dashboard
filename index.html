@@ -225,6 +225,7 @@
                         <button id="month-right-btn" onclick="shiftMonth(-1)" class="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500 transition">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                         </button>
+                        <button id="month-now-btn" onclick="shiftToNow()" class="text-xs px-2 py-1 border border-blue-200 text-blue-500 rounded-md hover:bg-blue-50 transition flex-shrink-0">回到当前</button>
                     </div>
                 </div>
                 <div id="monthly-trend-summary" class="text-xs text-gray-500 mb-3 px-2 py-1.5 bg-gray-50 rounded border border-gray-100"></div>
@@ -1297,6 +1298,11 @@ function renderATAChartByFleet(fleetKeyword) {
 
 function shiftMonth(delta) {
     monthOffset = Math.max(0, monthOffset + delta);
+    renderMonthlyTrendChart();
+}
+
+function shiftToNow() {
+    monthOffset = 0;
     renderMonthlyTrendChart();
 }
 
