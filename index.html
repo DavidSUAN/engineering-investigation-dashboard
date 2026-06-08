@@ -213,6 +213,26 @@
                 </div>
             </div>
 
+            <!-- Monthly Trend Chart -->
+            <div class="bg-white rounded-xl shadow-sm p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="font-semibold text-gray-700">工程调查月度趋势</span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="shiftMonth(-1)" class="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500 transition">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                        </button>
+                        <span id="monthly-trend-label" class="text-sm text-gray-600 font-medium min-w-[220px] text-center"></span>
+                        <button onclick="shiftMonth(1)" class="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500 transition">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div id="monthly-trend-summary" class="text-xs text-gray-500 mb-3 px-2 py-1.5 bg-gray-50 rounded border border-gray-100"></div>
+                <div style="position:relative; height:300px;">
+                    <canvas id="monthlyTrendChart"></canvas>
+                </div>
+            </div>
+
             <!-- ATA Fleet Charts -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div class="bg-white rounded-xl shadow-sm p-5">
@@ -377,6 +397,8 @@ let ata350ChartInstance = null;
 let ata330ChartInstance = null;
 let engineerChartInstance = null;
 let ataPieChartInstance = null;
+let monthlyTrendChartInstance = null;
+let monthOffset = 0;
 let cameFromTodoBoard = false;
 let todoEngineerFilter = [];
 let folderDirHandle = null;
@@ -1115,6 +1137,7 @@ function renderAllCharts() {
     renderATAChart();
     renderATAChartByFleet('350');
     renderATAChartByFleet('330');
+    renderMonthlyTrendChart();
     renderEngineerChart();
 }
 
@@ -1135,8 +1158,10 @@ function updateFilterSummary() {
 
     const ataEl = document.getElementById('ata-filter-summary');
     const engEl = document.getElementById('engineer-filter-summary');
+    const mtEl = document.getElementById('monthly-trend-summary');
     if (ataEl) ataEl.textContent = summary;
     if (engEl) engEl.textContent = summary;
+    if (mtEl) mtEl.textContent = summary;
 }
 
 function renderATAChart() {
@@ -1268,6 +1293,94 @@ function renderATAChartByFleet(fleetKeyword) {
 
     if (fleetKeyword === '350') ata350ChartInstance = chart;
     else ata330ChartInstance = chart;
+}
+
+function shiftMonth(delta) {
+    monthOffset += delta;
+    renderMonthlyTrendChart();
+}
+
+function renderMonthlyTrendChart() {
+    const canvas = document.getElementById('monthlyTrendChart');
+    if (!canvas) return;
+
+    const now = new Date();
+    const endMonth = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
+    const startMonth = new Date(endMonth);
+    startMonth.setMonth(startMonth.getMonth() - 11);
+
+    const labelEl = document.getElementById('monthly-trend-label');
+    if (labelEl) labelEl.textContent = `${startMonth.getFullYear()}年${startMonth.getMonth()+1}月 — ${endMonth.getFullYear()}年${endMonth.getMonth()+1}月`;
+
+    const months = [];
+    for (let i = 0; i < 12; i++) {
+        const d = new Date(startMonth);
+        d.setMonth(d.getMonth() + i);
+        months.push({
+            key: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,
+            label: `${String(d.getMonth()+1).padStart(2,'0')}月`,
+            total: 0, overdue: 0, attention: 0, normal: 0,
+            start: new Date(d.getFullYear(), d.getMonth(), 1),
+            end: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999)
+        });
+    }
+
+    for (const item of filteredData) {
+        if (!item._startDate) continue;
+        const sd = item._startDate;
+        for (const m of months) {
+            if (sd >= m.start && sd <= m.end) {
+                m.total++;
+                if (!item._isCompleted) {
+                    if (item._overdue === 'overdue') m.overdue++;
+                    else if (item._overdue === 'attention') m.attention++;
+                    else m.normal++;
+                }
+                break;
+            }
+        }
+    }
+
+    if (monthlyTrendChartInstance) { monthlyTrendChartInstance.destroy(); monthlyTrendChartInstance = null; }
+
+    const labels = months.map(m => m.label);
+
+    monthlyTrendChartInstance = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                { label: '总数', data: months.map(m => m.total), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', fill: true, tension: 0.3, pointRadius: 4, pointHoverRadius: 6, order: 3 },
+                { label: '超期', data: months.map(m => m.overdue), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)', fill: true, tension: 0.3, pointRadius: 3, pointHoverRadius: 5, order: 2 },
+                { label: '注意', data: months.map(m => m.attention), borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,0.08)', fill: true, tension: 0.3, pointRadius: 3, pointHoverRadius: 5, order: 1 },
+                { label: '正常', data: months.map(m => m.normal), borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.08)', fill: true, tension: 0.3, pointRadius: 3, pointHoverRadius: 5, order: 0 },
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            onClick: (event, elements, chart) => {
+                if (elements.length > 0) {
+                    const idx = elements[0].index;
+                    const m = months[idx];
+                    document.getElementById('date-from').value = `${m.start.getFullYear()}-${String(m.start.getMonth()+1).padStart(2,'0')}-01`;
+                    const lastDay = new Date(m.end.getFullYear(), m.end.getMonth() + 1, 0);
+                    document.getElementById('date-to').value = `${lastDay.getFullYear()}-${String(lastDay.getMonth()+1).padStart(2,'0')}-${String(lastDay.getDate()).padStart(2,'0')}`;
+                    applyFilters();
+                    document.getElementById('zones-container').scrollIntoView({ behavior: 'smooth' });
+                }
+            },
+            onHover: (event, elements) => {
+                event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+            },
+            plugins: { legend: { position: 'top' } },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } },
+                x: { ticks: { font: { size: 11 } } }
+            }
+        }
+    });
 }
 
 function renderEngineerChart() {
