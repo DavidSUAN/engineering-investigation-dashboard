@@ -408,6 +408,39 @@
         </div>
     </div>
 
+    <!-- Engineer Monthly Trend Modal -->
+    <div id="engineer-trend-modal" class="fixed inset-0 z-50 hidden items-center justify-center" style="background:rgba(0,0,0,0.4);">
+        <div id="engineer-trend-modal-box" class="bg-white rounded-xl shadow-2xl mx-4 fade-in" style="width:90vw;max-width:900px;" onclick="event.stopPropagation()">
+            <div class="px-5 py-4 flex items-center justify-between border-b border-gray-200">
+                <div>
+                    <span class="font-semibold text-gray-800" id="engineer-trend-modal-title"></span>
+                    <span class="text-sm text-gray-400 ml-2" id="engineer-trend-modal-subtitle"></span>
+                </div>
+                <button onclick="closeEngineerTrendModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="px-5 pt-4 flex items-center justify-between flex-wrap gap-3">
+                <div id="engineer-trend-modal-summary" class="text-xs text-gray-500 px-2 py-1.5 bg-gray-50 rounded border border-gray-100"></div>
+                <div class="flex items-center gap-2">
+                    <button id="eng-trend-left-btn" class="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500 transition" onclick="shiftEngineerTrendMonth(1)">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    </button>
+                    <span id="engineer-trend-modal-label" class="text-sm text-gray-600 font-medium min-w-[220px] text-center"></span>
+                    <button id="eng-trend-right-btn" class="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500 transition" onclick="shiftEngineerTrendMonth(-1)">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                    <button id="eng-trend-now-btn" class="text-xs px-2 py-1 border border-blue-200 text-blue-500 rounded-md hover:bg-blue-50 transition flex-shrink-0" onclick="shiftEngineerTrendToNow()">回到当前</button>
+                </div>
+            </div>
+            <div class="p-5">
+                <div style="position:relative; height:380px;">
+                    <canvas id="engineerTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
 <script>
 // ============================================================
 // STATE
@@ -426,6 +459,9 @@ let monthlyTrendChartInstance = null;
 let monthlyTrend350ChartInstance = null;
 let monthlyTrend330ChartInstance = null;
 let monthOffset = 0;
+let engineerTrendChartInstance = null;
+let engineerTrendMonthOffset = 0;
+let currentTrendEngineer = null;
 let cameFromTodoBoard = false;
 let todoEngineerFilter = [];
 let folderDirHandle = null;
@@ -1338,6 +1374,160 @@ function shiftToNow() {
     applyFilters();
 }
 
+function showEngineerTrend(name) {
+    currentTrendEngineer = name;
+    engineerTrendMonthOffset = 0;
+    document.getElementById('engineer-trend-modal-title').textContent = `工程调查月度趋势 — ${name}`;
+    closeAllDropdowns();
+    renderEngineerTrendChart();
+    const modal = document.getElementById('engineer-trend-modal');
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    modal.onclick = (e) => { if (e.target === modal) closeEngineerTrendModal(); };
+}
+
+function closeEngineerTrendModal() {
+    const modal = document.getElementById('engineer-trend-modal');
+    modal.classList.add('hidden');
+    modal.style.display = '';
+    if (engineerTrendChartInstance) { engineerTrendChartInstance.destroy(); engineerTrendChartInstance = null; }
+}
+
+function shiftEngineerTrendMonth(delta) {
+    engineerTrendMonthOffset = Math.max(0, engineerTrendMonthOffset + delta);
+    renderEngineerTrendChart();
+}
+
+function shiftEngineerTrendToNow() {
+    engineerTrendMonthOffset = 0;
+    document.getElementById('date-from').value = '';
+    document.getElementById('date-to').value = '';
+    applyFilters();
+    renderEngineerTrendChart();
+}
+
+function renderEngineerTrendChart() {
+    const canvas = document.getElementById('engineerTrendChart');
+    if (!canvas) return;
+
+    const engData = filteredData.filter(d => String(d.tmc_engineer || '').trim() === currentTrendEngineer);
+    document.getElementById('engineer-trend-modal-subtitle').textContent = `共 ${engData.length} 项工程调查`;
+
+    const now = new Date();
+    const endMonth = new Date(now.getFullYear(), now.getMonth() - engineerTrendMonthOffset, 1);
+    const startMonth = new Date(endMonth);
+    startMonth.setMonth(startMonth.getMonth() - 11);
+
+    const labelEl = document.getElementById('engineer-trend-modal-label');
+    if (labelEl) labelEl.textContent = `${startMonth.getFullYear()}年${startMonth.getMonth()+1}月 — ${endMonth.getFullYear()}年${endMonth.getMonth()+1}月`;
+
+    const rightBtn = document.getElementById('eng-trend-right-btn');
+    if (rightBtn) {
+        rightBtn.disabled = engineerTrendMonthOffset === 0;
+        rightBtn.style.opacity = engineerTrendMonthOffset === 0 ? '0.3' : '1';
+        rightBtn.style.cursor = engineerTrendMonthOffset === 0 ? 'default' : 'pointer';
+    }
+
+    const summaryEl = document.getElementById('engineer-trend-modal-summary');
+    if (summaryEl) {
+        const parts = [];
+        for (const f of FILTER_CONFIG) {
+            const selected = activeFilters[f.key];
+            if (selected && selected.length > 0 && f.key !== 'tmc_engineer') parts.push(`${f.label}: ${selected.join('、')}`);
+        }
+        const dateFrom = document.getElementById('date-from')?.value;
+        const dateTo = document.getElementById('date-to')?.value;
+        if (dateFrom) parts.push(`开始日期从 ${dateFrom}`);
+        if (dateTo) parts.push(`开始日期至 ${dateTo}`);
+        summaryEl.textContent = parts.length === 0 ? '筛选条件: 无（显示全部数据）' : '筛选条件: ' + parts.join('  |  ');
+    }
+
+    const months = [];
+    for (let i = 0; i < 12; i++) {
+        const d = new Date(startMonth);
+        d.setMonth(d.getMonth() + i);
+        months.push({
+            key: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,
+            label: `${String(d.getMonth()+1).padStart(2,'0')}月`,
+            total: 0,
+            start: new Date(d.getFullYear(), d.getMonth(), 1),
+            end: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999)
+        });
+    }
+
+    for (const item of engData) {
+        if (!item._startDate) continue;
+        const sd = item._startDate;
+        for (const m of months) {
+            if (sd >= m.start && sd <= m.end) {
+                m.total++;
+                break;
+            }
+        }
+    }
+
+    if (engineerTrendChartInstance) { engineerTrendChartInstance.destroy(); engineerTrendChartInstance = null; }
+
+    const labels = months.map(m => m.label);
+
+    engineerTrendChartInstance = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                { label: '总数', data: months.map(m => m.total), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', fill: true, tension: 0.3, pointRadius: 5, pointHoverRadius: 7, pointBackgroundColor: '#3b82f6' },
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            onClick: (event, elements, chart) => {
+                if (elements.length > 0) {
+                    const idx = elements[0].index;
+                    const m = months[idx];
+                    document.getElementById('date-from').value = `${m.start.getFullYear()}-${String(m.start.getMonth()+1).padStart(2,'0')}-01`;
+                    const lastDay = new Date(m.end.getFullYear(), m.end.getMonth() + 1, 0);
+                    document.getElementById('date-to').value = `${lastDay.getFullYear()}-${String(lastDay.getMonth()+1).padStart(2,'0')}-${String(lastDay.getDate()).padStart(2,'0')}`;
+                    closeEngineerTrendModal();
+                    applyFilters();
+                    document.getElementById('zones-container').scrollIntoView({ behavior: 'smooth' });
+                }
+            },
+            onHover: (event, elements) => {
+                event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y} 项` } }
+            },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 }, grace: '10%' },
+                x: { ticks: { font: { size: 11 } } }
+            },
+            layout: { padding: { top: 20 } }
+        },
+        plugins: [{
+            id: 'dataLabels',
+            afterDatasetsDraw(chart) {
+                const ctx = chart.ctx;
+                const meta = chart.getDatasetMeta(0);
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif';
+                ctx.fillStyle = '#1e293b';
+                meta.data.forEach((point, i) => {
+                    const val = chart.data.datasets[0].data[i];
+                    if (val > 0) {
+                        ctx.fillText(val, point.x, point.y - 8);
+                    }
+                });
+                ctx.restore();
+            }
+        }]
+    });
+}
+
 function renderMonthlyTrendChart() {
     const canvas = document.getElementById('monthlyTrendChart');
     if (!canvas) return;
@@ -1624,12 +1814,7 @@ function renderEngineerChart() {
             onClick: (event, elements, chart) => {
                 if (elements.length > 0) {
                     const engineerName = chart.data.labels[elements[0].index];
-                    activeFilters['tmc_engineer'] = [engineerName];
-                    updateDropdownUI('tmc_engineer');
-                    applyFilters();
-                    const fp = document.getElementById('filter-panel');
-                    if (fp && fp.classList.contains('hidden')) toggleFilters();
-                    document.getElementById('zones-container').scrollIntoView({ behavior: 'smooth' });
+                    showEngineerTrend(engineerName);
                 }
             },
             onHover: (event, elements) => {
