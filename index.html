@@ -163,17 +163,17 @@
                 <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-red-500">
                     <div class="text-sm text-gray-500 mb-1">超期</div>
                     <div id="stat-overdue" class="text-3xl font-bold text-red-600">0</div>
-                    <div class="text-xs text-gray-400 mt-1">count > 调查天数</div>
+                    <div class="text-xs text-gray-400 mt-1">已过天数 ≥ 调查天数</div>
                 </div>
                 <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-orange-500">
                     <div class="text-sm text-gray-500 mb-1">注意</div>
                     <div id="stat-warning" class="text-3xl font-bold text-orange-600">0</div>
-                    <div class="text-xs text-gray-400 mt-1">count 在 2/3~3/3 区间</div>
+                    <div class="text-xs text-gray-400 mt-1">已过天数在 2/3~3/3 区间</div>
                 </div>
                 <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-green-500">
                     <div class="text-sm text-gray-500 mb-1">正常</div>
                     <div id="stat-normal" class="text-3xl font-bold text-green-600">0</div>
-                    <div class="text-xs text-gray-400 mt-1">count ≤ 调查天数×2/3</div>
+                    <div class="text-xs text-gray-400 mt-1">已过天数 ≤ 调查天数×2/3</div>
                 </div>
             </div>
 
@@ -479,9 +479,9 @@ const FILTER_CONFIG = [
 ];
 
 const ZONE_CONFIG = [
-    { key: 'red', label: '超期', condition: 'count ≥ 调查天数', icon: '🔴', cssClass: 'zone-red', badgeClass: 'badge-red' },
-    { key: 'orange', label: '注意', condition: '调查天数×2/3 < count < 调查天数', icon: '🟠', cssClass: 'zone-orange', badgeClass: 'badge-orange' },
-    { key: 'green', label: '正常', condition: 'count ≤ 调查天数×2/3', icon: '🟢', cssClass: 'zone-green', badgeClass: 'badge-green' }
+    { key: 'red', label: '超期', condition: '已过天数 ≥ 调查天数', icon: '🔴', cssClass: 'zone-red', badgeClass: 'badge-red' },
+    { key: 'orange', label: '注意', condition: '调查天数×2/3 < 已过天数 < 调查天数', icon: '🟠', cssClass: 'zone-orange', badgeClass: 'badge-orange' },
+    { key: 'green', label: '正常', condition: '已过天数 ≤ 调查天数×2/3', icon: '🟢', cssClass: 'zone-green', badgeClass: 'badge-green' }
 ];
 
 const STATUS_LABELS = {
@@ -536,21 +536,21 @@ function getStatus(row) {
 
 function getColorZone(item) {
     const invDays = parseInt(item.investigation_days);
-    const cnt = parseInt(item.count);
-    if (isNaN(invDays) || isNaN(cnt) || invDays <= 0) return null;
+    const days = item._days;
+    if (isNaN(invDays) || days === null || invDays <= 0) return null;
     const threshold = Math.ceil(invDays * 2 / 3);
-    if (cnt >= invDays) return 'red';
-    if (cnt <= threshold) return 'green';
+    if (days >= invDays) return 'red';
+    if (days <= threshold) return 'green';
     return 'orange';
 }
 
 function getOverdueCategory(item) {
     const invDays = parseInt(item.investigation_days);
-    const cnt = parseInt(item.count);
-    if (isNaN(invDays) || isNaN(cnt) || invDays <= 0) return null;
+    const days = item._days;
+    if (isNaN(invDays) || days === null || invDays <= 0) return null;
     const threshold = Math.ceil(invDays * 2 / 3);
-    if (cnt >= invDays) return 'overdue';
-    if (cnt <= threshold) return 'normal';
+    if (days >= invDays) return 'overdue';
+    if (days <= threshold) return 'normal';
     return 'attention';
 }
 
