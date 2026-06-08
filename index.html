@@ -1775,7 +1775,7 @@ function renderEngineerChart() {
     for (const item of filteredData) {
         const eng = item.tmc_engineer || '未知';
         if (!engStats[eng]) {
-            engStats[eng] = { overdue: 0, attention: 0, normal: 0, completed: 0 };
+            engStats[eng] = { overdue: 0, attention: 0, normal: 0, completed: 0, wg: 0, reliability: 0 };
         }
         if (item._isCompleted) {
             engStats[eng].completed++;
@@ -1787,6 +1787,10 @@ function renderEngineerChart() {
                 default: engStats[eng].normal++; break;
             }
         }
+        const hasWgDate = parseDate(item.wg_date) !== null;
+        const hasReliabilityDate = parseDate(item.reliability_date) !== null;
+        if (hasWgDate && !hasReliabilityDate) engStats[eng].wg++;
+        if (hasReliabilityDate) engStats[eng].reliability++;
     }
 
     let entries = Object.entries(engStats).sort((a, b) => {
@@ -1804,6 +1808,8 @@ function renderEngineerChart() {
     const attentionData = entries.map(e => e[1].attention);
     const normalData = entries.map(e => e[1].normal);
     const completedData = entries.map(e => e[1].completed);
+    const wgCounts = entries.map(e => e[1].wg);
+    const relCounts = entries.map(e => e[1].reliability);
 
     if (engineerChartInstance) { engineerChartInstance.destroy(); engineerChartInstance = null; }
     if (labels.length === 0) return;
@@ -1840,13 +1846,13 @@ function renderEngineerChart() {
                     ticks: {
                         font: { size: 11 },
                         callback: function(value, index) {
-                            return [this.getLabelForValue(value), `${totals[index]}项`];
+                            return [this.getLabelForValue(value), `${totals[index]}项`, `WG:${wgCounts[index]}`, `可靠性:${relCounts[index]}`];
                         }
                     }
                 },
                 y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
             },
-            layout: { padding: { top: 65 } }
+            layout: { padding: { top: 65, bottom: 20 } }
         },
         plugins: [{
             id: 'barLabels',
