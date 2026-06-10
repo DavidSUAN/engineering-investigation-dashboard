@@ -148,32 +148,33 @@
         </header>
 
         <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+            <div class="sticky top-[53px] z-20 bg-gray-50 pb-2 space-y-6">
             <!-- Stat Cards -->
             <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-gray-500">
-                    <div class="text-sm text-gray-500 mb-1">总计</div>
-                    <div id="stat-total" class="text-3xl font-bold text-gray-700">0</div>
-                    <div class="text-xs text-gray-400 mt-1">当前筛选数据总数</div>
+                <div class="bg-white rounded-xl shadow-sm p-3 border-l-4 border-gray-500">
+                    <div class="text-xs text-gray-500 mb-0.5">总计</div>
+                    <div id="stat-total" class="text-2xl font-bold text-gray-700">0</div>
+                    <div class="text-xs text-gray-400 mt-0.5">当前筛选数据总数</div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-blue-500">
-                    <div class="text-sm text-gray-500 mb-1">进行中</div>
-                    <div id="stat-active" class="text-3xl font-bold text-blue-600">0</div>
-                    <div class="text-xs text-gray-400 mt-1">未完成调查总数</div>
+                <div class="bg-white rounded-xl shadow-sm p-3 border-l-4 border-blue-500">
+                    <div class="text-xs text-gray-500 mb-0.5">进行中</div>
+                    <div id="stat-active" class="text-2xl font-bold text-blue-600">0</div>
+                    <div class="text-xs text-gray-400 mt-0.5">未完成调查总数</div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-red-500 cursor-pointer hover:shadow-md transition" onclick="scrollToZone('red')">
-                    <div class="text-sm text-gray-500 mb-1">超期</div>
-                    <div id="stat-overdue" class="text-3xl font-bold text-red-600">0</div>
-                    <div class="text-xs text-gray-400 mt-1">已过天数 ≥ 调查天数</div>
+                <div class="bg-white rounded-xl shadow-sm p-3 border-l-4 border-red-500 cursor-pointer hover:shadow-md transition" onclick="scrollToZone('red')">
+                    <div class="text-xs text-gray-500 mb-0.5">超期</div>
+                    <div id="stat-overdue" class="text-2xl font-bold text-red-600">0</div>
+                    <div class="text-xs text-gray-400 mt-0.5">已过天数 ≥ 调查天数</div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-orange-500 cursor-pointer hover:shadow-md transition" onclick="scrollToZone('orange')">
-                    <div class="text-sm text-gray-500 mb-1">注意</div>
-                    <div id="stat-warning" class="text-3xl font-bold text-orange-600">0</div>
-                    <div class="text-xs text-gray-400 mt-1">已过天数在 2/3~3/3 区间</div>
+                <div class="bg-white rounded-xl shadow-sm p-3 border-l-4 border-orange-500 cursor-pointer hover:shadow-md transition" onclick="scrollToZone('orange')">
+                    <div class="text-xs text-gray-500 mb-0.5">注意</div>
+                    <div id="stat-warning" class="text-2xl font-bold text-orange-600">0</div>
+                    <div class="text-xs text-gray-400 mt-0.5">已过天数在 2/3~3/3 区间</div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm p-5 border-l-4 border-green-500 cursor-pointer hover:shadow-md transition" onclick="scrollToZone('green')">
-                    <div class="text-sm text-gray-500 mb-1">正常</div>
-                    <div id="stat-normal" class="text-3xl font-bold text-green-600">0</div>
-                    <div class="text-xs text-gray-400 mt-1">已过天数 ≤ 调查天数×2/3</div>
+                <div class="bg-white rounded-xl shadow-sm p-3 border-l-4 border-green-500 cursor-pointer hover:shadow-md transition" onclick="scrollToZone('green')">
+                    <div class="text-xs text-gray-500 mb-0.5">正常</div>
+                    <div id="stat-normal" class="text-2xl font-bold text-green-600">0</div>
+                    <div class="text-xs text-gray-400 mt-0.5">已过天数 ≤ 调查天数×2/3</div>
                 </div>
             </div>
 
@@ -200,81 +201,78 @@
                     </div>
                 </div>
             </div>
-
-            <!-- ATA Chapter Chart -->
-            <div class="bg-white rounded-xl shadow-sm p-5">
-                <div class="flex items-center justify-between mb-4">
-                    <span class="font-semibold text-gray-700">ATA章节工程调查统计</span>
-                    <span class="text-xs text-gray-400">按当前筛选条件统计</span>
-                </div>
-                <div id="ata-filter-summary" class="text-xs text-gray-500 mb-3 px-2 py-1.5 bg-gray-50 rounded border border-gray-100"></div>
-                <div style="position:relative; height:220px;">
-                    <canvas id="ataChart"></canvas>
-                </div>
             </div>
 
-            <!-- Monthly Trend Chart -->
-            <div class="bg-white rounded-xl shadow-sm p-5">
-                <div class="flex items-center justify-between mb-4">
-                    <span class="font-semibold text-gray-700">工程调查月度趋势</span>
-                    <div class="flex items-center gap-2">
-                        <button id="month-left-btn" onclick="shiftMonth(1)" class="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500 transition">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                        </button>
-                        <span id="monthly-trend-label" class="text-sm text-gray-600 font-medium min-w-[220px] text-center"></span>
-                        <button id="month-right-btn" onclick="shiftMonth(-1)" class="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500 transition">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                        </button>
-                        <button id="month-now-btn" onclick="shiftToNow()" class="text-xs px-2 py-1 border border-blue-200 text-blue-500 rounded-md hover:bg-blue-50 transition flex-shrink-0">回到当前</button>
+            <!-- ATA Chapter Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="bg-white rounded-xl shadow-sm p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="font-semibold text-sm text-gray-700">ATA章节工程调查统计</span>
+                        <span class="text-xs text-gray-400">按当前筛选条件统计</span>
+                    </div>
+                    <div id="ata-filter-summary" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
+                    <div style="position:relative; height:200px;">
+                        <canvas id="ataChart"></canvas>
                     </div>
                 </div>
-                <div id="monthly-trend-summary" class="text-xs text-gray-500 mb-3 px-2 py-1.5 bg-gray-50 rounded border border-gray-100"></div>
-                <div style="position:relative; height:300px;">
-                    <canvas id="monthlyTrendChart"></canvas>
-                </div>
-            </div>
-
-            <!-- ATA Fleet Charts -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div class="bg-white rounded-xl shadow-sm p-5">
-                    <div class="flex items-center justify-between mb-4">
-                        <span class="font-semibold text-gray-700">ATA章节工程调查统计（A350）</span>
+                <div class="bg-white rounded-xl shadow-sm p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="font-semibold text-sm text-gray-700">ATA章节工程调查统计（A350）</span>
                         <span class="text-xs text-gray-400">固定筛选机型 A350</span>
                     </div>
-                    <div style="position:relative; height:220px;">
+                    <div style="position:relative; height:200px;">
                         <canvas id="ata350Chart"></canvas>
                     </div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm p-5">
-                    <div class="flex items-center justify-between mb-4">
-                        <span class="font-semibold text-gray-700">ATA章节工程调查统计（A330）</span>
+                <div class="bg-white rounded-xl shadow-sm p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="font-semibold text-sm text-gray-700">ATA章节工程调查统计（A330）</span>
                         <span class="text-xs text-gray-400">固定筛选机型 A330</span>
                     </div>
-                    <div style="position:relative; height:220px;">
+                    <div style="position:relative; height:200px;">
                         <canvas id="ata330Chart"></canvas>
                     </div>
                 </div>
             </div>
 
-            <!-- Fleet Monthly Trend Charts -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div class="bg-white rounded-xl shadow-sm p-5">
-                    <div class="flex items-center justify-between mb-4">
-                        <span class="font-semibold text-gray-700">工程调查月度趋势（A350）</span>
+            <!-- Monthly Trend Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="bg-white rounded-xl shadow-sm p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="font-semibold text-sm text-gray-700">工程调查月度趋势</span>
+                        <div class="flex items-center gap-1.5">
+                            <button id="month-left-btn" onclick="shiftMonth(1)" class="w-6 h-6 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500 transition">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                            </button>
+                            <span id="monthly-trend-label" class="text-xs text-gray-600 font-medium text-center" style="min-width:170px;"></span>
+                            <button id="month-right-btn" onclick="shiftMonth(-1)" class="w-6 h-6 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500 transition">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                            </button>
+                            <button id="month-now-btn" onclick="shiftToNow()" class="text-xs px-1.5 py-0.5 border border-blue-200 text-blue-500 rounded-md hover:bg-blue-50 transition flex-shrink-0">回到当前</button>
+                        </div>
+                    </div>
+                    <div id="monthly-trend-summary" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
+                    <div style="position:relative; height:260px;">
+                        <canvas id="monthlyTrendChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="font-semibold text-sm text-gray-700">工程调查月度趋势（A350）</span>
                         <span class="text-xs text-gray-400">固定筛选机型 A350</span>
                     </div>
-                    <div id="monthly-trend-350-summary" class="text-xs text-gray-500 mb-3 px-2 py-1.5 bg-gray-50 rounded border border-gray-100"></div>
-                    <div style="position:relative; height:280px;">
+                    <div id="monthly-trend-350-summary" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
+                    <div style="position:relative; height:260px;">
                         <canvas id="monthlyTrend350Chart"></canvas>
                     </div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm p-5">
-                    <div class="flex items-center justify-between mb-4">
-                        <span class="font-semibold text-gray-700">工程调查月度趋势（A330）</span>
+                <div class="bg-white rounded-xl shadow-sm p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="font-semibold text-sm text-gray-700">工程调查月度趋势（A330）</span>
                         <span class="text-xs text-gray-400">固定筛选机型 A330</span>
                     </div>
-                    <div id="monthly-trend-330-summary" class="text-xs text-gray-500 mb-3 px-2 py-1.5 bg-gray-50 rounded border border-gray-100"></div>
-                    <div style="position:relative; height:280px;">
+                    <div id="monthly-trend-330-summary" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
+                    <div style="position:relative; height:260px;">
                         <canvas id="monthlyTrend330Chart"></canvas>
                     </div>
                 </div>
@@ -646,6 +644,11 @@ function hasVal(v) {
     return v !== null && v !== undefined && String(v).trim() !== '' && String(v) !== '/' && String(v) !== 'N/A' && String(v) !== 'NULL';
 }
 
+function splitEngineers(val) {
+    if (!hasVal(val)) return [];
+    return String(val).trim().split('/').map(s => s.trim()).filter(s => s.length > 0);
+}
+
 function getTodoLabel(item) {
     if (!hasVal(item.wg_tracking)) return '';
     if (hasVal(item.reliability_date)) return '待办事项由可靠性跟踪';
@@ -864,6 +867,7 @@ function parseExcel(buffer) {
         obj._overdue = getOverdueCategory(obj);
         obj._todoLabel = getTodoLabel(obj);
         obj._reliabilityLabel = getReliabilityLabel(obj);
+        obj._tmc_engineers = splitEngineers(obj.tmc_engineer);
         obj._index = i;
 
         const invDays = String(obj.investigation_days).trim();
@@ -891,6 +895,14 @@ function extractUniqueValues() {
         }
         if (f.key === 'fault_classification') {
             uniqueValues[f.key] = [...VALID_FAULT_CAUSES, '未定性'];
+        } else if (f.key === 'tmc_engineer') {
+            const vals = new Set();
+            for (const item of allData) {
+                for (const eng of item._tmc_engineers) {
+                    vals.add(eng);
+                }
+            }
+            uniqueValues[f.key] = [...vals].sort();
         } else {
             const vals = new Set();
             for (const item of allData) {
@@ -914,6 +926,8 @@ function itemMatchesFilters(item, excludeKey) {
             } else if (f.key === 'fault_classification') {
                 const val = normalizeFaultCause(item.fault_classification);
                 if (!selected.includes(val)) return false;
+            } else if (f.key === 'tmc_engineer') {
+                if (!item._tmc_engineers.some(eng => selected.includes(eng))) return false;
             } else {
                 const val = String(item[f.key] || '').trim();
                 if (!selected.includes(val)) return false;
@@ -948,6 +962,23 @@ function updateDynamicUniqueValues() {
             const selected = activeFilters[f.key] || [];
             for (const v of selected) causeSet.add(v);
             const newValues = [...causeSet].sort();
+            if (JSON.stringify(newValues) !== JSON.stringify(uniqueValues[f.key])) {
+                uniqueValues[f.key] = newValues;
+                updateDropdownContent(f.key);
+            }
+            continue;
+        }
+        if (f.key === 'tmc_engineer') {
+            const vals = new Set();
+            for (const item of allData) {
+                if (!itemMatchesFilters(item, f.key)) continue;
+                for (const eng of item._tmc_engineers) {
+                    vals.add(eng);
+                }
+            }
+            const selected = activeFilters[f.key] || [];
+            for (const v of selected) vals.add(v);
+            const newValues = [...vals].sort();
             if (JSON.stringify(newValues) !== JSON.stringify(uniqueValues[f.key])) {
                 uniqueValues[f.key] = newValues;
                 updateDropdownContent(f.key);
@@ -1289,7 +1320,7 @@ function renderATAChart() {
                     ticks: {
                         autoSkip: false,
                         maxRotation: 45,
-                        font: { size: 10 },
+                        font: { size: 9 },
                         callback: function(value, index) {
                             return [this.getLabelForValue(value), `${data[index]}项`];
                         }
@@ -1356,7 +1387,7 @@ function renderATAChartByFleet(fleetKeyword) {
                     ticks: {
                         autoSkip: false,
                         maxRotation: 45,
-                        font: { size: 10 },
+                        font: { size: 9 },
                         callback: function(value, index) {
                             return [this.getLabelForValue(value), `${data[index]}项`];
                         }
@@ -1423,7 +1454,7 @@ function renderEngineerTrendChart() {
     const canvas = document.getElementById('engineerTrendChart');
     if (!canvas) return;
 
-    const engData = filteredData.filter(d => String(d.tmc_engineer || '').trim() === currentTrendEngineer);
+    const engData = filteredData.filter(d => d._tmc_engineers.includes(currentTrendEngineer));
     document.getElementById('engineer-trend-modal-subtitle').textContent = `共 ${engData.length} 项工程调查`;
 
     const now = new Date();
@@ -1773,24 +1804,26 @@ function renderEngineerChart() {
 
     const engStats = {};
     for (const item of filteredData) {
-        const eng = item.tmc_engineer || '未知';
-        if (!engStats[eng]) {
-            engStats[eng] = { overdue: 0, attention: 0, normal: 0, completed: 0, wg: 0, reliability: 0 };
-        }
-        if (item._isCompleted) {
-            engStats[eng].completed++;
-        } else {
-            switch (item._colorZone) {
-                case 'red': engStats[eng].overdue++; break;
-                case 'orange': engStats[eng].attention++; break;
-                case 'green': engStats[eng].normal++; break;
-                default: engStats[eng].normal++; break;
+        const engineers = item._tmc_engineers.length > 0 ? item._tmc_engineers : ['未知'];
+        for (const eng of engineers) {
+            if (!engStats[eng]) {
+                engStats[eng] = { overdue: 0, attention: 0, normal: 0, completed: 0, wg: 0, reliability: 0 };
             }
+            if (item._isCompleted) {
+                engStats[eng].completed++;
+            } else {
+                switch (item._colorZone) {
+                    case 'red': engStats[eng].overdue++; break;
+                    case 'orange': engStats[eng].attention++; break;
+                    case 'green': engStats[eng].normal++; break;
+                    default: engStats[eng].normal++; break;
+                }
+            }
+            const hasWgDate = parseDate(item.wg_date) !== null;
+            const hasReliabilityDate = parseDate(item.reliability_date) !== null;
+            if (hasWgDate && !hasReliabilityDate) engStats[eng].wg++;
+            if (hasReliabilityDate) engStats[eng].reliability++;
         }
-        const hasWgDate = parseDate(item.wg_date) !== null;
-        const hasReliabilityDate = parseDate(item.reliability_date) !== null;
-        if (hasWgDate && !hasReliabilityDate) engStats[eng].wg++;
-        if (hasReliabilityDate) engStats[eng].reliability++;
     }
 
     let entries = Object.entries(engStats).sort((a, b) => {
@@ -2430,8 +2463,9 @@ function setupTodoEngineerFilter() {
     const todoItems = filteredData.filter(d => hasVal(d.wg_tracking));
     const engineers = new Set();
     for (const item of todoItems) {
-        const eng = item.tmc_engineer;
-        if (hasVal(eng)) engineers.add(String(eng).trim());
+        for (const eng of item._tmc_engineers) {
+            engineers.add(eng);
+        }
     }
     const engList = [...engineers].sort();
 
@@ -2493,7 +2527,7 @@ function renderTodoTable() {
     let todoItems = filteredData.filter(d => hasVal(d.wg_tracking));
 
     if (todoEngineerFilter.length > 0) {
-        todoItems = todoItems.filter(d => todoEngineerFilter.includes(String(d.tmc_engineer || '').trim()));
+        todoItems = todoItems.filter(d => d._tmc_engineers.some(eng => todoEngineerFilter.includes(eng)));
     }
 
     document.getElementById('todo-modal-count').textContent = `共 ${todoItems.length} 项工程调查存在待办事项`;
