@@ -168,7 +168,10 @@
         <!-- Header -->
         <header class="bg-white border-b border-gray-200 sticky top-0 z-30">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-                <h1 class="text-lg font-bold text-gray-800">TMC空客组工程调查看板</h1>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-lg font-bold text-gray-800">TMC空客组工程调查看板</h1>
+                    <button onclick="showGuide()" class="text-xs px-2.5 py-1 text-blue-500 border border-blue-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition flex-shrink-0">使用指南</button>
+                </div>
                 <div class="flex items-center gap-3">
                     <span id="data-info" class="text-sm text-gray-400"></span>
                     <button id="refresh-server-btn" onclick="refreshFromFolder()" class="hidden text-sm px-3 py-1.5 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 transition flex items-center gap-1.5">
@@ -252,79 +255,93 @@
             </div>
             </div>
 
-            <!-- ATA Chapter Charts -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div class="bg-white rounded-xl shadow-sm p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <span class="font-semibold text-sm text-gray-700">ATA章节工程调查统计</span>
-                        <span class="text-xs text-gray-400">按当前筛选条件统计</span>
+            <!-- Statistics Charts (Collapsible) -->
+            <div class="bg-white rounded-xl shadow-sm">
+                <div class="px-5 py-3 flex items-center justify-between cursor-pointer select-none" onclick="toggleCharts()">
+                    <div class="flex items-center gap-2">
+                        <span class="font-semibold text-gray-700 text-sm">统计图表</span>
+                        <span class="text-xs text-gray-400">（ATA章节统计 & 月度趋势）</span>
                     </div>
-                    <div id="ata-filter-summary" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
-                    <div style="position:relative; height:200px;">
-                        <canvas id="ataChart"></canvas>
-                    </div>
+                    <svg id="charts-chevron" class="w-5 h-5 text-gray-400 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <span class="font-semibold text-sm text-gray-700">ATA章节工程调查统计（A350）</span>
-                        <span class="text-xs text-gray-400">固定筛选机型 A350</span>
-                    </div>
-                    <div id="ata-filter-summary-350" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
-                    <div style="position:relative; height:200px;">
-                        <canvas id="ata350Chart"></canvas>
-                    </div>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <span class="font-semibold text-sm text-gray-700">ATA章节工程调查统计（A330）</span>
-                        <span class="text-xs text-gray-400">固定筛选机型 A330</span>
-                    </div>
-                    <div id="ata-filter-summary-330" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
-                    <div style="position:relative; height:200px;">
-                        <canvas id="ata330Chart"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Monthly Trend Charts -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div class="bg-white rounded-xl shadow-sm p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <span class="font-semibold text-sm text-gray-700">工程调查月度趋势</span>
-                        <div class="flex items-center gap-0.5">
-                            <button id="month-left-btn" onclick="shiftMonth(1)" class="w-4 h-4 flex items-center justify-center rounded border border-gray-200 hover:bg-gray-50 text-gray-500 transition">
-                                <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                            </button>
-                            <span id="monthly-trend-label" class="text-xs text-gray-600 font-medium text-center" style="min-width:140px;"></span>
-                            <button id="month-right-btn" onclick="shiftMonth(-1)" class="w-4 h-4 flex items-center justify-center rounded border border-gray-200 hover:bg-gray-50 text-gray-500 transition">
-                                <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                            </button>
-                            <button id="month-now-btn" onclick="shiftToNow()" class="text-xs px-0.5 py-0.5 border border-blue-200 text-blue-500 rounded hover:bg-blue-50 transition flex-shrink-0">回到当前</button>
+                <div id="charts-panel" class="hidden px-5 pb-4 space-y-4">
+                    <!-- ATA Chapter Charts -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <div class="bg-white rounded-xl shadow-sm p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="font-semibold text-sm text-gray-700">ATA章节工程调查统计</span>
+                                <span class="text-xs text-gray-400">按当前筛选条件统计</span>
+                            </div>
+                            <div id="ata-filter-summary" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
+                            <div style="position:relative; height:200px;">
+                                <canvas id="ataChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-sm p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="font-semibold text-sm text-gray-700">ATA章节工程调查统计（A350）</span>
+                                <span class="text-xs text-gray-400">固定筛选机型 A350</span>
+                            </div>
+                            <div id="ata-filter-summary-350" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
+                            <div style="position:relative; height:200px;">
+                                <canvas id="ata350Chart"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-sm p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="font-semibold text-sm text-gray-700">ATA章节工程调查统计（A330）</span>
+                                <span class="text-xs text-gray-400">固定筛选机型 A330</span>
+                            </div>
+                            <div id="ata-filter-summary-330" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
+                            <div style="position:relative; height:200px;">
+                                <canvas id="ata330Chart"></canvas>
+                            </div>
                         </div>
                     </div>
-                    <div id="monthly-trend-summary" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
-                    <div style="position:relative; height:260px;">
-                        <canvas id="monthlyTrendChart"></canvas>
-                    </div>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <span class="font-semibold text-sm text-gray-700">工程调查月度趋势（A350）</span>
-                        <span class="text-xs text-gray-400">固定筛选机型 A350</span>
-                    </div>
-                    <div id="monthly-trend-350-summary" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
-                    <div style="position:relative; height:260px;">
-                        <canvas id="monthlyTrend350Chart"></canvas>
-                    </div>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <span class="font-semibold text-sm text-gray-700">工程调查月度趋势（A330）</span>
-                        <span class="text-xs text-gray-400">固定筛选机型 A330</span>
-                    </div>
-                    <div id="monthly-trend-330-summary" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
-                    <div style="position:relative; height:260px;">
-                        <canvas id="monthlyTrend330Chart"></canvas>
+
+                    <!-- Monthly Trend Charts -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <div class="bg-white rounded-xl shadow-sm p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="font-semibold text-sm text-gray-700">工程调查月度趋势</span>
+                                <div class="flex items-center gap-0.5">
+                                    <button id="month-left-btn" onclick="shiftMonth(1)" class="w-4 h-4 flex items-center justify-center rounded border border-gray-200 hover:bg-gray-50 text-gray-500 transition">
+                                        <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                                    </button>
+                                    <span id="monthly-trend-label" class="text-xs text-gray-600 font-medium text-center" style="min-width:140px;"></span>
+                                    <button id="month-right-btn" onclick="shiftMonth(-1)" class="w-4 h-4 flex items-center justify-center rounded border border-gray-200 hover:bg-gray-50 text-gray-500 transition">
+                                        <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                    </button>
+                                    <button id="month-now-btn" onclick="shiftToNow()" class="text-xs px-0.5 py-0.5 border border-blue-200 text-blue-500 rounded hover:bg-blue-50 transition flex-shrink-0">回到当前</button>
+                                </div>
+                            </div>
+                            <div id="monthly-trend-summary" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
+                            <div style="position:relative; height:260px;">
+                                <canvas id="monthlyTrendChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-sm p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="font-semibold text-sm text-gray-700">工程调查月度趋势（A350）</span>
+                                <span class="text-xs text-gray-400">固定筛选机型 A350</span>
+                            </div>
+                            <div id="monthly-trend-350-summary" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
+                            <div style="position:relative; height:260px;">
+                                <canvas id="monthlyTrend350Chart"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-sm p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="font-semibold text-sm text-gray-700">工程调查月度趋势（A330）</span>
+                                <span class="text-xs text-gray-400">固定筛选机型 A330</span>
+                            </div>
+                            <div id="monthly-trend-330-summary" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
+                            <div style="position:relative; height:260px;">
+                                <canvas id="monthlyTrend330Chart"></canvas>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -362,17 +379,6 @@
                     </svg>
                 </div>
                 <div id="history-list" class="hidden px-5 pb-4"></div>
-            </div>
-
-            <!-- Export Button -->
-            <div class="flex justify-end pb-6">
-                <button onclick="exportData()"
-                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    导出筛选结果
-                </button>
             </div>
         </main>
     </div>
@@ -455,6 +461,141 @@
             <div class="px-5 py-3 border-t border-gray-200 flex justify-end gap-2 flex-shrink-0">
                 <button onclick="closeMemberModal()" class="px-4 py-1.5 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition">取消</button>
                 <button onclick="saveMembers()" class="px-4 py-1.5 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Usage Guide Modal -->
+    <div id="guide-modal" class="fixed inset-0 z-50 hidden items-center justify-center" style="background:rgba(0,0,0,0.4);">
+        <div class="bg-white rounded-xl shadow-2xl mx-4 fade-in" style="width:90vw;max-width:680px;max-height:85vh;display:flex;flex-direction:column;" onclick="event.stopPropagation()">
+            <div class="px-5 py-4 flex items-center justify-between border-b border-gray-200 flex-shrink-0">
+                <span class="font-semibold text-gray-800 text-lg">使用指南</span>
+                <button onclick="closeGuide()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="flex-1 overflow-auto px-5 py-4 text-sm text-gray-700 space-y-5">
+                <div>
+                    <h3 class="font-semibold text-gray-800 mb-2">1. 上传数据</h3>
+                    <ul class="list-disc pl-5 space-y-1.5 text-gray-600">
+                        <li><strong>拖拽上传：</strong>将「工程调查跟踪单」.xlsx 文件直接拖入上传区即可加载。这是最快的方式，适合一次性查看。</li>
+                        <li><strong>选择文件夹（推荐）：</strong>点击"选择文件夹"选取一个目录，自动列出其中的 .xlsx 文件。点击文件名加载数据后，每次打开看板只需点击右上角"刷新数据"即可获取该文件最新版本，无需反复上传。<span class="text-xs text-gray-400">（需要 Chrome 或 Edge 浏览器）</span></li>
+                        <li>自动解析"调查项目清单"工作表中的数据，按列名匹配字段，不依赖列顺序。</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="font-semibold text-gray-800 mb-2">2. 顶部统计卡片</h3>
+                    <ul class="list-disc pl-5 space-y-1.5 text-gray-600">
+                        <li><strong>总计：</strong>当前筛选条件下的数据总条数（含已完成）。</li>
+                        <li><strong>进行中：</strong>所有未完成调查的数量（不含已进入可靠性周会阶段的）。</li>
+                        <li><span class="inline-block w-2.5 h-2.5 rounded-full bg-red-500 mr-1.5 align-middle"></span><strong>超期：</strong>已过天数 ≥ 调查天数，表示该调查已超过预计完成时间。</li>
+                        <li><span class="inline-block w-2.5 h-2.5 rounded-full bg-orange-500 mr-1.5 align-middle"></span><strong>注意：</strong>已过天数处于调查天数的 2/3 ~ 3/3 区间，需要开始关注进度。</li>
+                        <li><span class="inline-block w-2.5 h-2.5 rounded-full bg-green-500 mr-1.5 align-middle"></span><strong>正常：</strong>已过天数 ≤ 调查天数的 2/3，进度健康。</li>
+                        <li class="text-blue-600"><strong>悬停交互：</strong>将鼠标移到超期/注意/正常卡片上，会弹出浮层列表，显示该分类下所有调查的<span class="text-gray-800">故障描述、负责工程师、已过天数</span>。点击列表中的任意一行可直接跳转该调查的详情页。</li>
+                        <li>点击统计卡片本身可滚动定位到页面下方对应的颜色分区。</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="font-semibold text-gray-800 mb-2">3. 筛选条件</h3>
+                    <ul class="list-disc pl-5 space-y-1.5 text-gray-600">
+                        <li>点击"筛选条件"展开面板，支持以下维度：<strong>故障类型、机型、飞机注册号、执管基地、ATA章节、TMC工程师、故障原因定性、待办事项</strong>。</li>
+                        <li><strong>多选筛选：</strong>每个维度可勾选多个值，不同维度之间为"与"关系，同一维度内为"或"关系。选中后立即生效，所有图表和列表同步更新。</li>
+                        <li><strong>单独重置：</strong>每个筛选项右侧有 × 按钮，可单独清空该维度的筛选，不影响其他维度。</li>
+                        <li><strong>搜索：</strong>飞机注册号筛选项内置搜索框，输入关键词快速定位。</li>
+                        <li><strong>日期范围：</strong>在下方的开始日期/结束日期输入框中设置范围，按调查开始日期过滤。</li>
+                        <li><strong>重置筛选：</strong>清空所有筛选条件和日期，恢复显示全部数据。</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="font-semibold text-gray-800 mb-2">4. 科室成员管理</h3>
+                    <ul class="list-disc pl-5 space-y-1.5 text-gray-600">
+                        <li><strong>勾选"仅显示科室成员"：</strong>过滤掉非本科室成员的调查，只看自己团队负责的内容。数据仍从原始 Excel 中提取所有工程师，勾选后仅显示名单中的成员。</li>
+                        <li><strong>点击"管理"按钮：</strong>弹出成员管理窗口，勾选需要关注的工程师。支持<strong>全选 / 取消全选</strong>，修改后点"保存"生效。</li>
+                        <li>成员名单保存在浏览器本地，下次打开无需重新配置。</li>
+                        <li>开启"仅显示科室成员"后，各筛选项中的工程师列表也会自动过滤，只显示成员范围内的可选项。</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="font-semibold text-gray-800 mb-2">5. ATA 章节统计图</h3>
+                    <ul class="list-disc pl-5 space-y-1.5 text-gray-600">
+                        <li>三张柱状图分别展示：<strong>全部机型、A350 专用、A330 专用</strong>的 ATA 章节调查数量分布。</li>
+                        <li>横轴为 ATA 章节号，纵轴为数量，柱子上方标注具体数值。最多显示前 20 个章节。</li>
+                        <li><strong>点击柱子：</strong>弹出该章节的故障原因分布饼图（部件可靠性、人为因素、设计原因、修理质量等），再点击饼图扇区可以<strong>自动筛选</strong>该章节+该故障原因的调查。</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="font-semibold text-gray-800 mb-2">6. 月度趋势图</h3>
+                    <ul class="list-disc pl-5 space-y-1.5 text-gray-600">
+                        <li>三张折线图分别展示：<strong>全部机型、A350、A330</strong>近 12 个月的调查数量趋势。数据点上方标注当月数值。</li>
+                        <li><strong>翻页浏览：</strong>点击左右箭头翻页查看更早的月份，"回到当前"恢复为最近 12 个月。</li>
+                        <li><strong>点击数据点：</strong>自动将日期筛选设置为该月范围，页面跳转到下方工程调查列表。</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="font-semibold text-gray-800 mb-2">7. 工程师统计图</h3>
+                    <ul class="list-disc pl-5 space-y-1.5 text-gray-600">
+                        <li>堆叠柱状图展示各工程师的调查分布，颜色分段：<span class="text-red-500">超期</span> / <span class="text-orange-500">注意</span> / <span class="text-green-500">正常</span> / <span class="text-gray-400">已完成</span>。柱子上方标注分类数值，横轴标签同时显示总项数、WG项数、可靠性项数。</li>
+                        <li><strong>点击柱子：</strong>弹出该工程师的月度趋势弹窗，筛选为该工程师的数据，可翻页查看趋势。点击月份数据点跳转到对应月份。</li>
+                        <li>悬停在柱子上会显示详细 tooltip 数据。</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="font-semibold text-gray-800 mb-2">8. 工程调查卡片 & 四色分区</h3>
+                    <ul class="list-disc pl-5 space-y-1.5 text-gray-600">
+                        <li>所有未完成的调查按紧急程度分为三个区：<span class="text-red-600 font-medium">超期</span> | <span class="text-orange-600 font-medium">注意</span> | <span class="text-green-600 font-medium">正常</span>，对应顶部统计卡片的分类。每个区默认展开，点击标题可折叠。</li>
+                        <li>每条调查卡片显示：<strong>飞机注册号、机型（灰色标签）、执管基地、ATA章节、</strong>以及以下彩色标签：</li>
+                    </ul>
+                    <div class="ml-5 mt-2 space-y-1 text-xs">
+                        <div class="flex items-center gap-2"><span class="px-1.5 py-0.5 rounded bg-blue-50 text-blue-500 font-medium">调查中</span><span class="text-gray-500">调查流程第一阶段</span></div>
+                        <div class="flex items-center gap-2"><span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-600 font-medium">科室讨论</span><span class="text-gray-500">已进行科室讨论</span></div>
+                        <div class="flex items-center gap-2"><span class="px-1.5 py-0.5 rounded bg-blue-200 text-blue-700 font-medium">WG周会</span><span class="text-gray-500">已上 WG 周会</span></div>
+                        <div class="flex items-center gap-2"><span class="px-1.5 py-0.5 rounded bg-blue-300 text-blue-800 font-medium">可靠性周会</span><span class="text-gray-500">已上可靠性周会</span></div>
+                        <div class="flex items-center gap-2"><span class="px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-medium">已存在待办事项N天</span><span class="text-gray-500">WG 会后存在跟踪事项及天数</span></div>
+                        <div class="flex items-center gap-2"><span class="px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-medium">可靠性周会日期</span><span class="text-gray-500">事项已移交可靠性周会跟踪</span></div>
+                        <div class="flex items-center gap-2"><span class="px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 font-medium">部件可靠性等</span><span class="text-gray-500">故障原因定性</span></div>
+                    </div>
+                    <ul class="list-disc pl-5 space-y-1.5 text-gray-600 mt-2">
+                        <li>卡片右上角显示<strong>已过天数</strong>（颜色对应紧急程度）和工程师姓名、调查开始日期。</li>
+                        <li><strong>点击卡片：</strong>跳转详情页，展示完整基本信息、故障信息、调查信息、会议记录、关键字信息，以及<strong>调查流程进度条</strong>（调查中→科室讨论→WG周会→可靠性周会）。</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="font-semibold text-gray-800 mb-2">9. 已完成数据</h3>
+                    <ul class="list-disc pl-5 space-y-1.5 text-gray-600">
+                        <li>位于页面底部，默认折叠。收录以下类型的调查：调查天数无有效数据、count 无有效数据、已填写结束日期。</li>
+                        <li>点击标题展开/折叠列表，卡片样式与进行中的调查一致但透明度降低以示区分。</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="font-semibold text-gray-800 mb-2">10. 待办事项看板</h3>
+                    <ul class="list-disc pl-5 space-y-1.5 text-gray-600">
+                        <li>在筛选面板中勾选"待办事项 → 有"，旁边会出现紫色"待办看板"按钮。点击弹出待办看板弹窗。</li>
+                        <li>以<strong>表格形式</strong>展示所有存在 WG 跟踪事项的调查，三列分别为：工程调查名称、待办事项内容（含标签）、负责工程师。</li>
+                        <li>表头"工程师"列有筛选按钮，可按工程师过滤待办事项。</li>
+                        <li>点击表格中的某一行可直接跳转该调查的详情页。</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="font-semibold text-gray-800 mb-2">11. 快捷操作</h3>
+                    <ul class="list-disc pl-5 space-y-1.5 text-gray-600">
+                        <li>按 <kbd class="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-xs font-mono">Esc</kbd> 可关闭所有弹窗、下拉菜单和筛选面板。</li>
+                        <li>点击弹窗外部灰色遮罩区域也可关闭弹窗。</li>
+                        <li>右上角"重新上传"按钮可随时切换数据源。</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="px-5 py-3 border-t border-gray-200 flex justify-end flex-shrink-0">
+                <button onclick="closeGuide()" class="px-4 py-1.5 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition">知道了</button>
             </div>
         </div>
     </div>
@@ -752,6 +893,14 @@ function decodeSource(src) {
     if (!src) return '-';
     if (src === 'OTHER') return '其他';
     return src.split('/').map(c => SOURCE_MEANINGS[c.trim()] || c.trim()).join('/');
+}
+
+function getDaysInfo(item) {
+    const elapsed = item._days;
+    if (elapsed === null) return null;
+    const invDays = parseInt(item.investigation_days);
+    if (isNaN(invDays) || invDays <= 0) return { remaining: null, elapsed };
+    return { remaining: Math.max(0, invDays - elapsed), elapsed };
 }
 
 function getStatusBadgeClass(status) {
@@ -1434,6 +1583,21 @@ function toggleFilters() {
     }
 }
 
+let chartsVisible = false;
+function toggleCharts() {
+    chartsVisible = !chartsVisible;
+    const panel = document.getElementById('charts-panel');
+    const chevron = document.getElementById('charts-chevron');
+    if (chartsVisible) {
+        panel.classList.remove('hidden');
+        chevron.style.transform = 'rotate(180deg)';
+        renderAllCharts();
+    } else {
+        panel.classList.add('hidden');
+        chevron.style.transform = '';
+    }
+}
+
 // ============================================================
 // HISTORY FILTER UI
 // ============================================================
@@ -1498,12 +1662,14 @@ function populateStatTooltip(tooltipId, overdueCategory, label) {
 // ============================================================
 function renderAllCharts() {
     updateFilterSummary();
-    renderATAChart();
-    renderATAChartByFleet('350');
-    renderATAChartByFleet('330');
-    renderMonthlyTrendChart();
-    renderMonthlyTrendChartByFleet('350');
-    renderMonthlyTrendChartByFleet('330');
+    if (chartsVisible) {
+        renderATAChart();
+        renderATAChartByFleet('350');
+        renderATAChartByFleet('330');
+        renderMonthlyTrendChart();
+        renderMonthlyTrendChartByFleet('350');
+        renderMonthlyTrendChartByFleet('330');
+    }
     renderEngineerChart();
 }
 
@@ -1692,9 +1858,6 @@ function shiftToNow() {
 function showEngineerTrend(name) {
     currentTrendEngineer = name;
     engineerTrendMonthOffset = 0;
-    activeFilters['tmc_engineer'] = [name];
-    updateDropdownUI('tmc_engineer');
-    applyFilters();
     document.getElementById('engineer-trend-modal-title').textContent = `工程调查月度趋势 — ${name}`;
     closeAllDropdowns();
     const modal = document.getElementById('engineer-trend-modal');
@@ -2146,7 +2309,16 @@ function renderEngineerChart() {
             onHover: (event, elements) => {
                 event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
             },
-            plugins: { legend: { position: 'top' } },
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                    callbacks: {
+                        afterBody: function() {
+                            return ['点击查看该工程师的月度趋势图'];
+                        }
+                    }
+                }
+            },
             scales: {
                 x: {
                     stacked: true,
@@ -2333,7 +2505,11 @@ function createItemCard(item, zone) {
     card.className = 'item-card border border-gray-100 rounded-lg p-3 cursor-pointer hover:border-gray-300';
     card.onclick = () => showDetail(item._index);
 
-    const daysText = item._days !== null ? `${item._days}天` : '-';
+    const daysInfo = getDaysInfo(item);
+    const daysColorClass = item._colorZone === 'red' ? 'text-red-600' : item._colorZone === 'orange' ? 'text-orange-600' : 'text-green-600';
+    const daysHtml = daysInfo
+        ? `<div class="text-lg font-bold ${daysColorClass}">${!item._isCompleted && daysInfo.remaining !== null ? `剩余${daysInfo.remaining}天，` : ''}已过${daysInfo.elapsed}天</div>`
+        : '<div class="text-lg font-bold text-gray-400">-</div>';
     const overdueLabel = item._overdue === 'overdue' ? '<span class="text-xs px-1.5 py-0.5 rounded badge-red font-medium">超期</span>' :
                          item._overdue === 'attention' ? '<span class="text-xs px-1.5 py-0.5 rounded badge-orange font-medium">注意</span>' : '';
     const todoLabel = item._todoLabel ? `<span class="text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200 font-medium">${item._todoLabel}</span>` : '';
@@ -2359,7 +2535,7 @@ function createItemCard(item, zone) {
                 </div>
             </div>
             <div class="text-right flex-shrink-0">
-                <div class="text-lg font-bold ${item._colorZone === 'red' ? 'text-red-600' : item._colorZone === 'orange' ? 'text-orange-600' : 'text-green-600'}">${daysText}</div>
+                ${daysHtml}
                 <div class="text-xs text-gray-400">${item.tmc_engineer || '-'}</div>
                 <div class="text-xs text-gray-400">${formatDate(item._startDate)}</div>
             </div>
@@ -2379,10 +2555,13 @@ function showDetail(index) {
         `${item.ac || '-'} | ${item.fleet || '-'} | ${item.report_title || '工程调查详情'}`;
 
     const container = document.getElementById('detail-content');
-    const daysText = item._days !== null ? `${item._days}天` : '-';
     const overdueCategory = item._overdue;
     const isCompleted = item._isCompleted;
     const daysColor = isCompleted ? 'text-green-600' : (item._colorZone === 'red' ? 'text-red-600' : item._colorZone === 'orange' ? 'text-orange-600' : 'text-green-600');
+    const daysInfo = getDaysInfo(item);
+    const detailDaysHtml = daysInfo
+        ? `<div class="text-3xl font-bold ${daysColor}">${!isCompleted && daysInfo.remaining !== null ? `剩余${daysInfo.remaining}天，` : ''}已过${daysInfo.elapsed}天</div>`
+        : '<div class="text-3xl font-bold text-gray-400">-</div>';
     const overdueTags = !isCompleted ? (overdueCategory === 'overdue' ? '<span class="text-xs px-2 py-0.5 rounded badge-red font-medium">超期</span>' : '')
         + (overdueCategory === 'attention' ? '<span class="text-xs px-2 py-0.5 rounded badge-orange font-medium">注意</span>' : '') : '';
     const completedTag = isCompleted ? '<span class="text-xs px-2 py-0.5 rounded bg-gray-200 text-gray-600 font-medium">已完成</span>' : '';
@@ -2413,10 +2592,10 @@ function showDetail(index) {
         <div class="bg-white rounded-xl shadow-sm p-5 flex items-center justify-between flex-wrap gap-4">
             <div>
                 <div class="text-2xl font-bold text-gray-800">${item.ac || '-'} <span class="text-base font-normal text-gray-500">${item.fleet || ''}</span></div>
-                <div class="text-sm text-gray-500 mt-1">${item.base || '-'} | ATA ${item.ata || '-'}</div>
+                <div class="text-sm text-gray-500 mt-1">${item.base || '-'} | ATA ${item.ata || '-'} | 工程师：${item.tmc_engineer || '-'}</div>
             </div>
             <div class="text-right">
-                <div class="text-3xl font-bold ${daysColor}">${daysText}</div>
+                ${detailDaysHtml}
                 <div class="flex items-center gap-2 mt-1 justify-end">
                     <span class="text-xs px-2 py-0.5 rounded ${getStatusBadgeClass(item._status)} font-medium">${item._status}</span>
                     ${completedTag}
@@ -2522,49 +2701,6 @@ function showDashboard() {
         cameFromTodoBoard = false;
         setTimeout(() => showTodoBoard(), 100);
     }
-}
-
-// ============================================================
-// EXPORT
-// ============================================================
-function exportData() {
-    if (filteredData.length === 0) {
-        alert('当前筛选条件下没有数据可导出');
-        return;
-    }
-
-    const exportRows = filteredData.map(d => ({
-        '状态': d._status,
-        '故障来源': d.source,
-        '来源说明': decodeSource(d.source),
-        '机型': d.fleet,
-        '飞机注册号': d.ac,
-        '执管基地': d.base,
-        '故障日期': formatDate(d._faultDate),
-        'ATA章节': d.ata,
-        '故障描述': d.fault_des,
-        'TMC工程师': d.tmc_engineer,
-        '基地工程师': d.base_engineer,
-        '调查开始日期': formatDate(d._startDate),
-        '已过天数': d._days !== null ? d._days : '-',
-        '是否超期': d._overdue === 'overdue' ? '是' : '否',
-        '报告标题': d.report_title,
-        '科室讨论': d.dept_discussion,
-        '故障原因定性': d.fault_classification,
-        'WG会议决议': d.wg_decision,
-        'WG跟踪事项': d.wg_tracking,
-        '可靠性周会日期': formatDate(parseDate(d.reliability_date)),
-        '措施完成情况': d.measure_status,
-        '完成状态': d.completion_status
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(exportRows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '筛选结果');
-
-    const now = new Date();
-    const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
-    XLSX.writeFile(wb, `工程调查看板_筛选结果_${ts}.xlsx`);
 }
 
 // ============================================================
@@ -2880,10 +3016,23 @@ function closeTodoModal() {
 // ============================================================
 // INIT
 // ============================================================
+function showGuide() {
+    const modal = document.getElementById('guide-modal');
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    modal.onclick = (e) => { if (e.target === modal) closeGuide(); };
+}
+
+function closeGuide() {
+    const modal = document.getElementById('guide-modal');
+    modal.classList.add('hidden');
+    modal.style.display = '';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initUpload();
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') { closeAllDropdowns(); closeATAModal(); closeTodoModal(); closeMemberModal(); }
+        if (e.key === 'Escape') { closeAllDropdowns(); closeATAModal(); closeTodoModal(); closeMemberModal(); closeGuide(); }
     });
 });
 </script>
