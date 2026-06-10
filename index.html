@@ -102,11 +102,12 @@
 <body class="bg-gray-50 min-h-screen">
 
     <!-- Upload Page -->
-    <div id="upload-page" class="min-h-screen flex items-center justify-center p-6">
+    <div id="upload-page" class="min-h-screen flex items-center justify-center p-6 hidden">
         <div class="max-w-lg w-full">
             <div class="text-center mb-8">
                 <h1 class="text-3xl font-bold text-gray-800 mb-2">TMC空客组工程调查看板</h1>
                 <p class="text-gray-500">请上传工程调查跟踪单 Excel 文件</p>
+                <p class="text-xs text-blue-500 mt-2">只需上传一次，后续打开自动加载，无需重复操作</p>
             </div>
             <div id="drop-zone" class="upload-zone rounded-xl p-12 text-center cursor-pointer bg-white"
                  onclick="document.getElementById('file-input').click()">
@@ -180,7 +181,7 @@
                         </svg>
                         刷新数据
                     </button>
-                    <button onclick="document.getElementById('file-input').click()"
+                    <button onclick="resetToUpload()"
                             class="text-sm px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
                         重新上传
                     </button>
@@ -659,6 +660,141 @@
 
 <script>
 // ============================================================
+// INDEXEDDB PERSISTENCE
+// ============================================================
+const DB_NAME = 'EIDashboard';
+const DB_VERSION = 1;
+
+function openDB() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains('cache')) {
+                db.createObjectStore('cache');
+            }
+        };
+        req.onsuccess = (e) => resolve(e.target.result);
+        req.onerror = (e) => reject(e.target.error);
+    });
+}
+
+async function saveDataToCache() {
+    try {
+        const db = await openDB();
+        const tx = db.transaction('cache', 'readwrite');
+        const store = tx.objectStore('cache');
+
+        const payload = {
+            allData: allData,
+            uniqueValues: uniqueValues,
+            activeFolderFileName: activeFolderFileName || null,
+            savedAt: Date.now()
+        };
+
+        if (folderDirHandle) {
+            payload.folderDirHandle = folderDirHandle;
+        }
+        if (activeFolderFileHandle) {
+            payload.activeFolderFileHandle = activeFolderFileHandle;
+        }
+
+        store.put(payload, 'dashboardData');
+        await new Promise((resolve, reject) => {
+            tx.oncomplete = resolve;
+            tx.onerror = (e) => reject(e.target.error);
+        });
+        db.close();
+    } catch (e) {
+        console.warn('IndexedDB 保存失败:', e);
+    }
+}
+
+async function loadCachedData() {
+    try {
+        const db = await openDB();
+        const tx = db.transaction('cache', 'readonly');
+        const store = tx.objectStore('cache');
+        const req = store.get('dashboardData');
+        const result = await new Promise((resolve, reject) => {
+            req.onsuccess = (e) => resolve(e.target.result);
+            req.onerror = (e) => reject(e.target.error);
+        });
+        db.close();
+        return result || null;
+    } catch (e) {
+        console.warn('IndexedDB 读取失败:', e);
+        return null;
+    }
+}
+
+async function clearCache() {
+    try {
+        const db = await openDB();
+        const tx = db.transaction('cache', 'readwrite');
+        const store = tx.objectStore('cache');
+        store.delete('dashboardData');
+        await new Promise((resolve, reject) => {
+            tx.oncomplete = resolve;
+            tx.onerror = (e) => reject(e.target.error);
+        });
+        db.close();
+    } catch (e) {
+        console.warn('IndexedDB 清除失败:', e);
+    }
+}
+
+async function restoreFromHandle(storedHandle) {
+    if (!storedHandle) return null;
+    try {
+        const perms = await storedHandle.queryPermission({ mode: 'read' });
+        if (perms !== 'granted') {
+            const reqPerms = await storedHandle.requestPermission({ mode: 'read' });
+            if (reqPerms !== 'granted') return null;
+        }
+        const file = await storedHandle.getFile();
+        if (!file.name.match(/\.xlsx?$/i)) return null;
+        activeFolderFileHandle = storedHandle;
+        activeFolderFileName = file.name;
+        return await file.arrayBuffer();
+    } catch (e) {
+        console.warn('恢复文件句柄失败:', e);
+        return null;
+    }
+}
+
+async function autoRestore() {
+    const cached = await loadCachedData();
+    if (!cached) return false;
+
+    let buffer = null;
+    if (cached.activeFolderFileHandle) {
+        buffer = await restoreFromHandle(cached.activeFolderFileHandle);
+    }
+
+    if (buffer) {
+        try {
+            parseExcel(buffer);
+            return true;
+        } catch (e) {
+            console.warn('自动恢复文件解析失败:', e);
+        }
+    }
+
+    if (cached.allData && cached.allData.length > 0) {
+        allData = cached.allData;
+        uniqueValues = cached.uniqueValues;
+        activeFolderFileName = cached.activeFolderFileName || null;
+        buildFilters();
+        showDashboardPage();
+        setTimeout(() => resetFilters(), 50);
+        return true;
+    }
+
+    return false;
+}
+
+// ============================================================
 // STATE
 // ============================================================
 let allData = [];
@@ -1108,6 +1244,7 @@ function parseExcel(buffer) {
     buildFilters();
     showDashboardPage();
     setTimeout(() => resetFilters(), 50);
+    setTimeout(() => saveDataToCache(), 100);
 }
 
 // ============================================================
@@ -2703,6 +2840,20 @@ function showDashboard() {
     }
 }
 
+async function resetToUpload() {
+    await clearCache();
+    folderDirHandle = null;
+    activeFolderFileHandle = null;
+    activeFolderFileName = null;
+    allData = [];
+    filteredData = [];
+    document.getElementById('dashboard-page').classList.add('hidden');
+    document.getElementById('detail-page').classList.add('hidden');
+    document.getElementById('upload-page').classList.remove('hidden');
+    document.getElementById('refresh-server-btn').classList.add('hidden');
+    window.scrollTo(0, 0);
+}
+
 // ============================================================
 // ATA PIE CHART MODAL
 // ============================================================
@@ -3029,11 +3180,16 @@ function closeGuide() {
     modal.style.display = '';
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     initUpload();
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') { closeAllDropdowns(); closeATAModal(); closeTodoModal(); closeMemberModal(); closeGuide(); }
     });
+
+    const restored = await autoRestore();
+    if (!restored) {
+        document.getElementById('upload-page').classList.remove('hidden');
+    }
 });
 </script>
 </body>
