@@ -181,7 +181,15 @@
             <!-- Filter Panel -->
             <div class="bg-white rounded-xl shadow-sm">
                 <div class="px-5 py-3 flex items-center justify-between cursor-pointer select-none" onclick="toggleFilters()">
-                    <span class="font-semibold text-gray-700 text-sm">筛选条件</span>
+                    <div class="flex items-center gap-4 flex-1 min-w-0">
+                        <span class="font-semibold text-gray-700 text-sm flex-shrink-0">筛选条件</span>
+                        <label class="flex items-center gap-1.5 cursor-pointer select-none flex-shrink-0" onclick="event.stopPropagation()">
+                            <input type="checkbox" id="members-only-toggle" onchange="toggleMembersOnly()" class="accent-blue-600">
+                            <span class="text-xs text-gray-500">仅显示科室成员</span>
+                        </label>
+                        <button id="manage-members-btn" onclick="showMemberManager(); event.stopPropagation()" class="text-xs px-1.5 py-0.5 text-blue-500 hover:bg-blue-50 rounded transition hidden flex-shrink-0">管理</button>
+                        <span id="filter-summary" class="text-xs text-blue-600 truncate flex-1 min-w-0"></span>
+                    </div>
                     <svg id="filter-chevron" class="w-5 h-5 text-gray-400 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                     </svg>
@@ -220,6 +228,7 @@
                         <span class="font-semibold text-sm text-gray-700">ATA章节工程调查统计（A350）</span>
                         <span class="text-xs text-gray-400">固定筛选机型 A350</span>
                     </div>
+                    <div id="ata-filter-summary-350" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
                     <div style="position:relative; height:200px;">
                         <canvas id="ata350Chart"></canvas>
                     </div>
@@ -229,6 +238,7 @@
                         <span class="font-semibold text-sm text-gray-700">ATA章节工程调查统计（A330）</span>
                         <span class="text-xs text-gray-400">固定筛选机型 A330</span>
                     </div>
+                    <div id="ata-filter-summary-330" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
                     <div style="position:relative; height:200px;">
                         <canvas id="ata330Chart"></canvas>
                     </div>
@@ -240,15 +250,15 @@
                 <div class="bg-white rounded-xl shadow-sm p-4">
                     <div class="flex items-center justify-between mb-3">
                         <span class="font-semibold text-sm text-gray-700">工程调查月度趋势</span>
-                        <div class="flex items-center gap-1.5">
-                            <button id="month-left-btn" onclick="shiftMonth(1)" class="w-6 h-6 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500 transition">
-                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                        <div class="flex items-center gap-0.5">
+                            <button id="month-left-btn" onclick="shiftMonth(1)" class="w-4 h-4 flex items-center justify-center rounded border border-gray-200 hover:bg-gray-50 text-gray-500 transition">
+                                <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                             </button>
-                            <span id="monthly-trend-label" class="text-xs text-gray-600 font-medium text-center" style="min-width:170px;"></span>
-                            <button id="month-right-btn" onclick="shiftMonth(-1)" class="w-6 h-6 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500 transition">
-                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                            <span id="monthly-trend-label" class="text-xs text-gray-600 font-medium text-center" style="min-width:140px;"></span>
+                            <button id="month-right-btn" onclick="shiftMonth(-1)" class="w-4 h-4 flex items-center justify-center rounded border border-gray-200 hover:bg-gray-50 text-gray-500 transition">
+                                <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                             </button>
-                            <button id="month-now-btn" onclick="shiftToNow()" class="text-xs px-1.5 py-0.5 border border-blue-200 text-blue-500 rounded-md hover:bg-blue-50 transition flex-shrink-0">回到当前</button>
+                            <button id="month-now-btn" onclick="shiftToNow()" class="text-xs px-0.5 py-0.5 border border-blue-200 text-blue-500 rounded hover:bg-blue-50 transition flex-shrink-0">回到当前</button>
                         </div>
                     </div>
                     <div id="monthly-trend-summary" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
@@ -385,6 +395,29 @@
         </div>
     </div>
 
+    <!-- Member Management Modal -->
+    <div id="member-modal" class="fixed inset-0 z-50 hidden items-center justify-center" style="background:rgba(0,0,0,0.4);">
+        <div id="member-modal-box" class="bg-white rounded-xl shadow-2xl mx-4 fade-in" style="width:90vw;max-width:480px;max-height:80vh;display:flex;flex-direction:column;" onclick="event.stopPropagation()">
+            <div class="px-5 py-4 flex items-center justify-between border-b border-gray-200 flex-shrink-0">
+                <span class="font-semibold text-gray-800">管理科室成员</span>
+                <button onclick="closeMemberModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="p-3 border-b border-gray-100 bg-gray-50 flex items-center gap-2 flex-shrink-0">
+                <button onclick="selectAllMembers()" class="text-xs px-2 py-1 text-blue-600 hover:bg-blue-50 rounded transition">全选</button>
+                <button onclick="deselectAllMembers()" class="text-xs px-2 py-1 text-gray-500 hover:bg-gray-100 rounded transition">取消全选</button>
+                <span id="member-count" class="text-xs text-gray-400 ml-auto"></span>
+            </div>
+            <div class="flex-1 overflow-auto p-3" id="member-checkboxes">
+            </div>
+            <div class="px-5 py-3 border-t border-gray-200 flex justify-end gap-2 flex-shrink-0">
+                <button onclick="closeMemberModal()" class="px-4 py-1.5 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition">取消</button>
+                <button onclick="saveMembers()" class="px-4 py-1.5 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition">保存</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ATA Fault Cause Modal -->
     <div id="ata-modal" class="fixed inset-0 z-50 hidden items-center justify-center" style="background:rgba(0,0,0,0.4);">
         <div id="ata-modal-box" class="bg-white rounded-xl shadow-2xl mx-4 fade-in" onclick="event.stopPropagation()">
@@ -450,7 +483,7 @@ let allData = [];
 let filteredData = [];
 let uniqueValues = {};
 let activeFilters = {};
-let filtersVisible = true;
+let filtersVisible = false;
 let ataChartInstance = null;
 let ata350ChartInstance = null;
 let ata330ChartInstance = null;
@@ -468,6 +501,10 @@ let todoEngineerFilter = [];
 let folderDirHandle = null;
 let activeFolderFileHandle = null;
 let activeFolderFileName = null;
+let currentMembers = [];
+let excludedMembers = [];
+let membersOnly = true;
+let memberModalDraft = null;
 
 // ============================================================
 // CONFIGURATION
@@ -949,13 +986,18 @@ function itemMatchesFilters(item, excludeKey) {
     return true;
 }
 
+function itemPassesMemberFilter(item) {
+    if (!membersOnly || currentMembers.length === 0) return true;
+    return item._tmc_engineers.some(eng => currentMembers.includes(eng));
+}
+
 function updateDynamicUniqueValues() {
     for (const f of FILTER_CONFIG) {
         if (f.preset) continue;
         if (f.key === 'fault_classification') {
             const causeSet = new Set();
             for (const item of allData) {
-                if (!itemMatchesFilters(item, f.key)) continue;
+                if (!itemMatchesFilters(item, f.key) || !itemPassesMemberFilter(item)) continue;
                 const v = normalizeFaultCause(item.fault_classification);
                 causeSet.add(v);
             }
@@ -971,9 +1013,14 @@ function updateDynamicUniqueValues() {
         if (f.key === 'tmc_engineer') {
             const vals = new Set();
             for (const item of allData) {
-                if (!itemMatchesFilters(item, f.key)) continue;
+                if (!itemMatchesFilters(item, f.key) || !itemPassesMemberFilter(item)) continue;
                 for (const eng of item._tmc_engineers) {
                     vals.add(eng);
+                }
+            }
+            if (membersOnly && currentMembers.length > 0) {
+                for (const eng of vals) {
+                    if (!currentMembers.includes(eng)) vals.delete(eng);
                 }
             }
             const selected = activeFilters[f.key] || [];
@@ -987,7 +1034,7 @@ function updateDynamicUniqueValues() {
         }
         const vals = new Set();
         for (const item of allData) {
-            if (!itemMatchesFilters(item, f.key)) continue;
+            if (!itemMatchesFilters(item, f.key) || !itemPassesMemberFilter(item)) continue;
             const v = item[f.key];
             if (hasVal(v)) vals.add(String(v).trim());
         }
@@ -1019,12 +1066,37 @@ function updateDropdownContent(key) {
 function applyFilters() {
     filteredData = allData.filter(item => itemMatchesFilters(item, null));
 
+    if (membersOnly && currentMembers.length > 0) {
+        filteredData = filteredData.filter(item =>
+            item._tmc_engineers.some(eng => currentMembers.includes(eng))
+        );
+    }
+
     updateDynamicUniqueValues();
+    updateHeaderSummary();
 
     renderStats();
     renderAllCharts();
     renderZones();
     renderHistory();
+}
+
+function updateHeaderSummary() {
+    const el = document.getElementById('filter-summary');
+    if (!el) return;
+    const parts = [];
+    for (const f of FILTER_CONFIG) {
+        const selected = activeFilters[f.key];
+        if (selected && selected.length > 0) {
+            parts.push(`${f.label}: ${selected.join('、')}`);
+        }
+    }
+    const dateFrom = document.getElementById('date-from')?.value;
+    const dateTo = document.getElementById('date-to')?.value;
+    if (dateFrom || dateTo) {
+        parts.push(`日期: ${dateFrom || '...'} ~ ${dateTo || '...'}`);
+    }
+    el.textContent = parts.length > 0 ? parts.join('  |  ') : '';
 }
 
 function resetFilters() {
@@ -1042,6 +1114,122 @@ function resetSingleFilter(key) {
     activeFilters[key] = [];
     updateDropdownUI(key);
     applyFilters();
+}
+
+// ============================================================
+// MEMBER MANAGEMENT
+// ============================================================
+function initMembers() {
+    try {
+        const saved = localStorage.getItem('currentMembers');
+        if (saved) currentMembers = JSON.parse(saved);
+    } catch (e) { currentMembers = []; }
+
+    try {
+        const saved = localStorage.getItem('excludedMembers');
+        if (saved) excludedMembers = JSON.parse(saved);
+    } catch (e) { excludedMembers = []; }
+
+    try {
+        const savedOnly = localStorage.getItem('membersOnly');
+        if (savedOnly !== null) membersOnly = savedOnly === 'true';
+    } catch (e) { membersOnly = true; }
+
+    const toggle = document.getElementById('members-only-toggle');
+    if (toggle) toggle.checked = membersOnly;
+
+    const manageBtn = document.getElementById('manage-members-btn');
+    if (manageBtn && allData.length > 0) manageBtn.classList.remove('hidden');
+}
+
+function toggleMembersOnly() {
+    membersOnly = document.getElementById('members-only-toggle').checked;
+    localStorage.setItem('membersOnly', membersOnly);
+    if (membersOnly && currentMembers.length > 0 && activeFilters['tmc_engineer']) {
+        activeFilters['tmc_engineer'] = activeFilters['tmc_engineer'].filter(eng => currentMembers.includes(eng));
+        updateDropdownUI('tmc_engineer');
+    }
+    applyFilters();
+}
+
+function getAllEngineers() {
+    const engineers = new Set();
+    for (const item of allData) {
+        for (const eng of item._tmc_engineers) {
+            engineers.add(eng);
+        }
+    }
+    return [...engineers].sort();
+}
+
+function showMemberManager() {
+    const allEngineers = getAllEngineers();
+    const modal = document.getElementById('member-modal');
+    const container = document.getElementById('member-checkboxes');
+
+    memberModalDraft = new Set(allEngineers);
+    for (const eng of excludedMembers) {
+        memberModalDraft.delete(eng);
+    }
+
+    let html = '';
+    for (const eng of allEngineers) {
+        const checked = memberModalDraft.has(eng) ? 'checked' : '';
+        html += `<label class="flex items-center gap-2 px-2 py-1.5 hover:bg-gray-50 rounded cursor-pointer">
+            <input type="checkbox" value="${eng}" ${checked} onchange="onMemberCheckboxChange('${eng}', this.checked)" class="accent-blue-600">
+            <span class="text-sm text-gray-700">${eng}</span>
+        </label>`;
+    }
+    container.innerHTML = html;
+    updateMemberCount(allEngineers.length);
+
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    modal.onclick = (e) => { if (e.target === modal) closeMemberModal(); };
+}
+
+function onMemberCheckboxChange(eng, checked) {
+    if (checked) memberModalDraft.add(eng);
+    else memberModalDraft.delete(eng);
+    updateMemberCount(getAllEngineers().length);
+}
+
+function updateMemberCount(total) {
+    const el = document.getElementById('member-count');
+    if (el) el.textContent = `已选 ${memberModalDraft.size} / ${total}`;
+}
+
+function selectAllMembers() {
+    const allEngineers = getAllEngineers();
+    memberModalDraft = new Set(allEngineers);
+    const checkboxes = document.getElementById('member-checkboxes').querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(cb => { cb.checked = true; });
+    updateMemberCount(allEngineers.length);
+}
+
+function deselectAllMembers() {
+    memberModalDraft = new Set();
+    const checkboxes = document.getElementById('member-checkboxes').querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(cb => { cb.checked = false; });
+    updateMemberCount(getAllEngineers().length);
+}
+
+function saveMembers() {
+    currentMembers = [...memberModalDraft];
+    const allEngineers = getAllEngineers();
+    excludedMembers = allEngineers.filter(eng => !memberModalDraft.has(eng));
+    localStorage.setItem('currentMembers', JSON.stringify(currentMembers));
+    localStorage.setItem('excludedMembers', JSON.stringify(excludedMembers));
+    memberModalDraft = null;
+    closeMemberModal();
+    applyFilters();
+}
+
+function closeMemberModal() {
+    const modal = document.getElementById('member-modal');
+    modal.classList.add('hidden');
+    modal.style.display = '';
+    memberModalDraft = null;
 }
 
 // ============================================================
@@ -1340,6 +1528,21 @@ function renderATAChartByFleet(fleetKeyword) {
     if (existing) { existing.destroy(); }
 
     const fleetData = filteredData.filter(d => String(d.fleet).includes(fleetKeyword));
+    const fleetLabel = fleetKeyword === '350' ? 'A350' : 'A330';
+
+    const summaryEl = document.getElementById(`ata-filter-summary-${fleetKeyword}`);
+    if (summaryEl) {
+        const parts = [];
+        for (const f of FILTER_CONFIG) {
+            const selected = activeFilters[f.key];
+            if (selected && selected.length > 0) parts.push(`${f.label}: ${selected.join('、')}`);
+        }
+        const dateFrom = document.getElementById('date-from')?.value;
+        const dateTo = document.getElementById('date-to')?.value;
+        if (dateFrom) parts.push(`开始日期从 ${dateFrom}`);
+        if (dateTo) parts.push(`开始日期至 ${dateTo}`);
+        summaryEl.textContent = parts.length === 0 ? '筛选条件: 固定机型 ' + fleetLabel : '筛选条件: 固定机型 ' + fleetLabel + ' | ' + parts.join('  |  ');
+    }
 
     const ataCounts = {};
     for (const item of fleetData) {
@@ -1356,7 +1559,6 @@ function renderATAChartByFleet(fleetKeyword) {
 
     if (labels.length === 0) return;
 
-    const fleetLabel = fleetKeyword === '350' ? 'A350' : 'A330';
     const chart = new Chart(canvas, {
         type: 'bar',
         data: {
@@ -1423,11 +1625,11 @@ function showEngineerTrend(name) {
     applyFilters();
     document.getElementById('engineer-trend-modal-title').textContent = `工程调查月度趋势 — ${name}`;
     closeAllDropdowns();
-    renderEngineerTrendChart();
     const modal = document.getElementById('engineer-trend-modal');
     modal.classList.remove('hidden');
     modal.style.display = 'flex';
     modal.onclick = (e) => { if (e.target === modal) closeEngineerTrendModal(); };
+    setTimeout(() => renderEngineerTrendChart(), 50);
 }
 
 function closeEngineerTrendModal() {
@@ -2236,6 +2438,9 @@ function showDashboardPage() {
         refreshBtn.classList.remove('hidden');
         refreshBtn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>刷新数据';
     }
+
+    initMembers();
+
     window.scrollTo(0, 0);
 }
 
@@ -2606,7 +2811,7 @@ function closeTodoModal() {
 document.addEventListener('DOMContentLoaded', () => {
     initUpload();
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') { closeAllDropdowns(); closeATAModal(); closeTodoModal(); }
+        if (e.key === 'Escape') { closeAllDropdowns(); closeATAModal(); closeTodoModal(); closeMemberModal(); }
     });
 });
 </script>
