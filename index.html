@@ -45,6 +45,7 @@
         .dropdown-option { padding: 6px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
         .dropdown-option:hover { background: #f1f5f9; }
         .dropdown-option input[type="checkbox"] { accent-color: #3b82f6; }
+        .filter-count { margin-left: auto; font-size: 11px; color: #94a3b8; background: #f1f5f9; padding: 1px 6px; border-radius: 8px; flex-shrink: 0; }
 
         .fade-in { animation: fadeIn 0.2s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -168,7 +169,7 @@
     <div id="dashboard-page" class="hidden">
         <!-- Header -->
         <header class="bg-white border-b border-gray-200 sticky top-0 z-30">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+            <div class="max-w-[95vw] mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <h1 class="text-lg font-bold text-gray-800">TMC空客组工程调查看板</h1>
                     <button onclick="showGuide()" class="text-xs px-2.5 py-1 text-blue-500 border border-blue-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition flex-shrink-0">使用指南</button>
@@ -189,7 +190,7 @@
             </div>
         </header>
 
-        <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        <main class="max-w-[95vw] mx-auto px-4 sm:px-6 py-6 space-y-6">
             <div class="sticky top-[53px] z-20 bg-gray-50 pb-2 space-y-6">
             <!-- Stat Cards -->
             <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
@@ -198,10 +199,11 @@
                     <div id="stat-total" class="text-2xl font-bold text-gray-700">0</div>
                     <div class="text-xs text-gray-400 mt-0.5">当前筛选数据总数</div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm p-3 border-l-4 border-blue-500">
+                <div class="stat-card bg-white rounded-xl shadow-sm p-3 border-l-4 border-blue-500 cursor-pointer hover:shadow-md transition" onclick="scrollToZones()">
                     <div class="text-xs text-gray-500 mb-0.5">进行中</div>
                     <div id="stat-active" class="text-2xl font-bold text-blue-600">0</div>
                     <div class="text-xs text-gray-400 mt-0.5">未完成调查总数</div>
+                    <div class="stat-tooltip" id="tooltip-active"></div>
                 </div>
                 <div class="stat-card bg-white rounded-xl shadow-sm p-3 border-l-4 border-red-500 cursor-pointer hover:shadow-md transition" onclick="scrollToZone('red')">
                     <div class="text-xs text-gray-500 mb-0.5">超期</div>
@@ -272,7 +274,7 @@
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                         <div class="bg-white rounded-xl shadow-sm p-4">
                             <div class="flex items-center justify-between mb-3">
-                                <span class="font-semibold text-sm text-gray-700">ATA章节工程调查统计</span>
+                                <span class="font-semibold text-sm text-gray-700">ATA章节工程调查统计</span><span id="ata-all-count" class="text-xs text-gray-400 ml-1"></span>
                                 <span class="text-xs text-gray-400">按当前筛选条件统计</span>
                             </div>
                             <div id="ata-filter-summary" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
@@ -282,7 +284,7 @@
                         </div>
                         <div class="bg-white rounded-xl shadow-sm p-4">
                             <div class="flex items-center justify-between mb-3">
-                                <span class="font-semibold text-sm text-gray-700">ATA章节工程调查统计（A350）</span>
+                                <span class="font-semibold text-sm text-gray-700">ATA章节工程调查统计（A350）</span><span id="ata350-count" class="text-xs text-gray-400 ml-1"></span>
                                 <span class="text-xs text-gray-400">固定筛选机型 A350</span>
                             </div>
                             <div id="ata-filter-summary-350" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
@@ -292,7 +294,7 @@
                         </div>
                         <div class="bg-white rounded-xl shadow-sm p-4">
                             <div class="flex items-center justify-between mb-3">
-                                <span class="font-semibold text-sm text-gray-700">ATA章节工程调查统计（A330）</span>
+                                <span class="font-semibold text-sm text-gray-700">ATA章节工程调查统计（A330）</span><span id="ata330-count" class="text-xs text-gray-400 ml-1"></span>
                                 <span class="text-xs text-gray-400">固定筛选机型 A330</span>
                             </div>
                             <div id="ata-filter-summary-330" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
@@ -306,7 +308,7 @@
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                         <div class="bg-white rounded-xl shadow-sm p-4">
                             <div class="flex items-center justify-between mb-3">
-                                <span class="font-semibold text-sm text-gray-700">工程调查月度趋势</span>
+                                <span class="font-semibold text-sm text-gray-700">工程调查月度趋势</span><span id="mt-all-count" class="text-xs text-gray-400 ml-1"></span>
                                 <div class="flex items-center gap-0.5">
                                     <button id="month-left-btn" onclick="shiftMonth(1)" class="w-4 h-4 flex items-center justify-center rounded border border-gray-200 hover:bg-gray-50 text-gray-500 transition">
                                         <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
@@ -325,7 +327,7 @@
                         </div>
                         <div class="bg-white rounded-xl shadow-sm p-4">
                             <div class="flex items-center justify-between mb-3">
-                                <span class="font-semibold text-sm text-gray-700">工程调查月度趋势（A350）</span>
+                                <span class="font-semibold text-sm text-gray-700">工程调查月度趋势（A350）</span><span id="mt350-count" class="text-xs text-gray-400 ml-1"></span>
                                 <span class="text-xs text-gray-400">固定筛选机型 A350</span>
                             </div>
                             <div id="monthly-trend-350-summary" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
@@ -335,7 +337,7 @@
                         </div>
                         <div class="bg-white rounded-xl shadow-sm p-4">
                             <div class="flex items-center justify-between mb-3">
-                                <span class="font-semibold text-sm text-gray-700">工程调查月度趋势（A330）</span>
+                                <span class="font-semibold text-sm text-gray-700">工程调查月度趋势（A330）</span><span id="mt330-count" class="text-xs text-gray-400 ml-1"></span>
                                 <span class="text-xs text-gray-400">固定筛选机型 A330</span>
                             </div>
                             <div id="monthly-trend-330-summary" class="text-xs text-gray-500 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100"></div>
@@ -417,7 +419,7 @@
                 </button>
             </div>
             <div class="flex-1 flex flex-col" style="min-height:0">
-                <div class="grid bg-gray-100 flex-shrink-0 px-5 pt-5" style="grid-template-columns:40% 40% 20%">
+                <div class="grid bg-gray-100 flex-shrink-0 px-5 pt-5" style="grid-template-columns:28% 60% 12%">
                     <div class="text-left px-4 py-3 border-b-2 border-gray-200 font-semibold text-gray-700">工程调查名称</div>
                     <div class="text-left px-4 py-3 border-b-2 border-gray-200 font-semibold text-gray-700">待办事项</div>
                     <div class="text-left px-4 py-3 border-b-2 border-gray-200 font-semibold text-gray-700 flex items-center gap-1">
@@ -785,9 +787,44 @@ async function autoRestore() {
         allData = cached.allData;
         uniqueValues = cached.uniqueValues;
         activeFolderFileName = cached.activeFolderFileName || null;
+
+        for (const item of allData) {
+            if (!item._atas) {
+                item._atas = String(item.ata || '').split('/').map(s => s.trim()).filter(Boolean);
+            }
+            if (!item._sources) {
+                item._sources = String(item.source || '').split('/').map(s => s.trim()).filter(Boolean);
+            }
+            if (!item._tmc_engineers) {
+                item._tmc_engineers = splitEngineers(item.tmc_engineer);
+            }
+        }
+
+        // Rebuild uniqueValues for ATA if using old cached format
+        const ataVals = new Set();
+        for (const item of allData) {
+            for (const ata of item._atas) {
+                ataVals.add(ata);
+            }
+        }
+        uniqueValues['ata'] = [...ataVals].sort((a, b) => {
+            const na = parseInt(a), nb = parseInt(b);
+            if (!isNaN(na) && !isNaN(nb)) return na - nb;
+            return a.localeCompare(b);
+        });
+
+        const srcVals = new Set();
+        for (const item of allData) {
+            for (const s of item._sources) {
+                srcVals.add(s);
+            }
+        }
+        uniqueValues['source'] = [...srcVals].sort();
+
         buildFilters();
         showDashboardPage();
         setTimeout(() => resetFilters(), 50);
+        setTimeout(() => saveDataToCache(), 200);
         return true;
     }
 
@@ -935,9 +972,14 @@ const STATUS_LABELS = {
 const STATUS_FLOW = ['调查中', '科室讨论', 'WG周会', '可靠性周会'];
 
 const SOURCE_MEANINGS = {
-    'G': '出勤故障', 'W': '世界机队', 'S': 'SDR事件', 'M': '重要故障',
-    'P': '机组关注', 'R': '重复故障', 'OTHER': '其他'
+    'G': '出勤故障', 'W': '世界机队故障', 'S': 'SDR事件', 'M': '重要故障',
+    'P': '机组关注故障', 'R': '重复故障', 'OTHER': '其他'
 };
+
+function formatSourceLabel(code) {
+    const meaning = SOURCE_MEANINGS[code];
+    return meaning ? `${code}（${meaning}）` : code;
+}
 
 // ============================================================
 // UTILITY FUNCTIONS
@@ -1203,6 +1245,14 @@ function parseExcel(buffer) {
 
     const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
     const colMap = buildColumnMap(raw[0] || []);
+
+    let ataColIndex = -1;
+    for (let ci = 0; ci < (raw[0] || []).length; ci++) {
+        if (colMap[ci] === 'ata') { ataColIndex = ci; break; }
+    }
+
+    const cellToRef = (r, c) => XLSX.utils.encode_cell({ r, c });
+
     allData = [];
 
     for (let i = 1; i < raw.length; i++) {
@@ -1212,7 +1262,17 @@ function parseExcel(buffer) {
         const obj = {};
         for (let ci = 0; ci < row.length; ci++) {
             const field = colMap[ci];
-            if (field) obj[field] = row[ci] ?? '';
+            if (field === 'ata') {
+                const val = row[ci] ?? '';
+                if (typeof val === 'number' && ataColIndex >= 0) {
+                    const cell = ws[cellToRef(i, ataColIndex)];
+                    obj.ata = (cell && cell.w) ? String(cell.w).trim() : String(val);
+                } else {
+                    obj.ata = val;
+                }
+            } else if (field) {
+                obj[field] = row[ci] ?? '';
+            }
         }
 
         const startDate = parseDate(obj.start_date);
@@ -1231,6 +1291,8 @@ function parseExcel(buffer) {
         obj._todoLabel = getTodoLabel(obj);
         obj._reliabilityLabel = getReliabilityLabel(obj);
         obj._tmc_engineers = splitEngineers(obj.tmc_engineer);
+        obj._atas = String(obj.ata || '').split('/').map(s => s.trim()).filter(Boolean);
+        obj._sources = String(obj.source || '').split('/').map(s => s.trim()).filter(Boolean);
         obj._index = i;
 
         const invDays = String(obj.investigation_days).trim();
@@ -1267,6 +1329,26 @@ function extractUniqueValues() {
                 }
             }
             uniqueValues[f.key] = [...vals].sort();
+        } else if (f.key === 'ata') {
+            const vals = new Set();
+            for (const item of allData) {
+                for (const ata of item._atas) {
+                    vals.add(ata);
+                }
+            }
+            uniqueValues[f.key] = [...vals].sort((a, b) => {
+                const na = parseInt(a), nb = parseInt(b);
+                if (!isNaN(na) && !isNaN(nb)) return na - nb;
+                return a.localeCompare(b);
+            });
+        } else if (f.key === 'source') {
+            const vals = new Set();
+            for (const item of allData) {
+                for (const s of item._sources) {
+                    vals.add(s);
+                }
+            }
+            uniqueValues[f.key] = [...vals].sort();
         } else {
             const vals = new Set();
             for (const item of allData) {
@@ -1292,6 +1374,10 @@ function itemMatchesFilters(item, excludeKey) {
                 if (!selected.includes(val)) return false;
             } else if (f.key === 'tmc_engineer') {
                 if (!item._tmc_engineers.some(eng => selected.includes(eng))) return false;
+            } else if (f.key === 'ata') {
+                if (!item._atas.some(ata => selected.includes(ata))) return false;
+            } else if (f.key === 'source') {
+                if (!item._sources.some(s => selected.includes(s))) return false;
             } else {
                 const val = String(item[f.key] || '').trim();
                 if (!selected.includes(val)) return false;
@@ -1359,6 +1445,44 @@ function updateDynamicUniqueValues() {
             }
             continue;
         }
+        if (f.key === 'ata') {
+            const vals = new Set();
+            for (const item of allData) {
+                if (!itemMatchesFilters(item, f.key) || !itemPassesMemberFilter(item)) continue;
+                for (const ata of item._atas) {
+                    vals.add(ata);
+                }
+            }
+            const selected = activeFilters[f.key] || [];
+            for (const v of selected) vals.add(v);
+            const newValues = [...vals].sort((a, b) => {
+                const na = parseInt(a), nb = parseInt(b);
+                if (!isNaN(na) && !isNaN(nb)) return na - nb;
+                return a.localeCompare(b);
+            });
+            if (JSON.stringify(newValues) !== JSON.stringify(uniqueValues[f.key])) {
+                uniqueValues[f.key] = newValues;
+                updateDropdownContent(f.key);
+            }
+            continue;
+        }
+        if (f.key === 'source') {
+            const vals = new Set();
+            for (const item of allData) {
+                if (!itemMatchesFilters(item, f.key) || !itemPassesMemberFilter(item)) continue;
+                for (const s of item._sources) {
+                    vals.add(s);
+                }
+            }
+            const selected = activeFilters[f.key] || [];
+            for (const v of selected) vals.add(v);
+            const newValues = [...vals].sort();
+            if (JSON.stringify(newValues) !== JSON.stringify(uniqueValues[f.key])) {
+                uniqueValues[f.key] = newValues;
+                updateDropdownContent(f.key);
+            }
+            continue;
+        }
         const vals = new Set();
         for (const item of allData) {
             if (!itemMatchesFilters(item, f.key) || !itemPassesMemberFilter(item)) continue;
@@ -1379,15 +1503,55 @@ function updateDropdownContent(key) {
     const optionsEl = document.getElementById(`options-${key}`);
     if (!optionsEl) return;
     const selected = activeFilters[key] || [];
+    const counts = getFilterCounts(key);
     let html = '';
     for (const val of uniqueValues[key]) {
         const checked = selected.includes(val) ? 'checked' : '';
+        const cnt = counts[val] || 0;
+        const label = key === 'source' ? formatSourceLabel(val) : val;
         html += `<label class="dropdown-option" data-value="${val}">
             <input type="checkbox" value="${val}" ${checked} onchange="onFilterChange('${key}')">
-            <span class="text-sm truncate">${val}</span>
+            <span class="text-sm truncate">${label}</span>
+            <span class="filter-count">${cnt}</span>
         </label>`;
     }
     optionsEl.innerHTML = html;
+}
+
+function getFilterCounts(key) {
+    const counts = {};
+    for (const val of uniqueValues[key]) {
+        counts[val] = 0;
+    }
+    for (const item of allData) {
+        if (!itemMatchesFilters(item, key)) continue;
+        if (!itemPassesMemberFilter(item)) continue;
+        let itemVal;
+        if (key === '_has_todo') {
+            itemVal = hasVal(item.wg_tracking) ? '有' : '无';
+        } else if (key === 'fault_classification') {
+            itemVal = normalizeFaultCause(item.fault_classification);
+        } else if (key === 'tmc_engineer') {
+            for (const eng of item._tmc_engineers) {
+                if (counts.hasOwnProperty(eng)) counts[eng]++;
+            }
+            continue;
+        } else if (key === 'ata') {
+            for (const ata of item._atas) {
+                if (counts.hasOwnProperty(ata)) counts[ata]++;
+            }
+            continue;
+        } else if (key === 'source') {
+            for (const s of item._sources) {
+                if (counts.hasOwnProperty(s)) counts[s]++;
+            }
+            continue;
+        } else {
+            itemVal = String(item[key] || '').trim();
+        }
+        if (counts.hasOwnProperty(itemVal)) counts[itemVal]++;
+    }
+    return counts;
 }
 
 function applyFilters() {
@@ -1415,7 +1579,8 @@ function updateHeaderSummary() {
     for (const f of FILTER_CONFIG) {
         const selected = activeFilters[f.key];
         if (selected && selected.length > 0) {
-            parts.push(`${f.label}: ${selected.join('、')}`);
+            const display = f.key === 'source' ? selected.map(formatSourceLabel).join('、') : selected.join('、');
+            parts.push(`${f.label}: ${display}`);
         }
     }
     const dateFrom = document.getElementById('date-from')?.value;
@@ -1625,10 +1790,14 @@ function buildFilters() {
             </div>`;
         }
         html += `<div class="dropdown-panel p-1" id="options-${f.key}">`;
+        const counts = getFilterCounts(f.key);
         for (const val of uniqueValues[f.key]) {
+            const cnt = counts[val] || 0;
+            const label = f.key === 'source' ? formatSourceLabel(val) : val;
             html += `<label class="dropdown-option" data-value="${val}">
                 <input type="checkbox" value="${val}" onchange="onFilterChange('${f.key}')">
-                <span class="text-sm truncate">${val}</span>
+                <span class="text-sm truncate">${label}</span>
+                <span class="filter-count">${cnt}</span>
             </label>`;
         }
         html += '</div>';
@@ -1684,7 +1853,8 @@ function updateDropdownUI(key) {
         label.className = 'truncate text-gray-600';
         if (resetBtn) resetBtn.classList.add('hidden');
     } else {
-        label.textContent = selected.join('、');
+        const display = key === 'source' ? selected.map(formatSourceLabel).join('、') : selected.join('、');
+        label.textContent = display;
         label.className = 'truncate text-blue-600 font-medium';
         if (resetBtn) resetBtn.classList.remove('hidden');
     }
@@ -1762,34 +1932,43 @@ function renderStats() {
     if (st) st.textContent = filteredData.length;
     if (di) di.textContent = `共 ${filteredData.length} / ${allData.length} 条`;
 
+    populateStatTooltip('tooltip-active', 'active', '进行中');
     populateStatTooltip('tooltip-overdue', 'overdue', '超期');
     populateStatTooltip('tooltip-warning', 'attention', '注意');
     populateStatTooltip('tooltip-normal', 'normal', '正常');
 }
 
-function populateStatTooltip(tooltipId, overdueCategory, label) {
+function populateStatTooltip(tooltipId, category, label) {
     const tooltip = document.getElementById(tooltipId);
     if (!tooltip) return;
 
-    const items = filteredData
-        .filter(d => d._overdue === overdueCategory && !d._isCompleted)
-        .sort((a, b) => (b._days ?? 0) - (a._days ?? 0));
+    let items;
+    if (category === 'active') {
+        items = filteredData
+            .filter(d => d._status !== '可靠性周会' && !d._isCompleted)
+            .sort((a, b) => (b._days ?? 0) - (a._days ?? 0));
+    } else {
+        items = filteredData
+            .filter(d => d._overdue === category && !d._isCompleted)
+            .sort((a, b) => (b._days ?? 0) - (a._days ?? 0));
+    }
 
     if (items.length === 0) {
         tooltip.innerHTML = `<div class="stat-tooltip-inner"><div class="stat-tooltip-empty">暂无${label}数据</div></div>`;
         return;
     }
 
-    const color = overdueCategory === 'overdue' ? '#dc2626' : overdueCategory === 'attention' ? '#ea580c' : '#16a34a';
-
     tooltip.innerHTML = `<div class="stat-tooltip-inner">${items.map(item => {
         const name = truncate(item.fault_des, 40) || '-';
         const eng = item.tmc_engineer || '-';
         const days = item._days !== null ? `${item._days}天` : '-';
+        const itemColor = category === 'active'
+            ? (item._overdue === 'overdue' ? '#dc2626' : item._overdue === 'attention' ? '#ea580c' : '#16a34a')
+            : (category === 'overdue' ? '#dc2626' : category === 'attention' ? '#ea580c' : '#16a34a');
         return `<div class="stat-tooltip-row" onclick="showDetail(${item._index}); event.stopPropagation()" style="cursor:pointer">
             <span class="tt-name" title="${(item.fault_des || '').replace(/"/g, '&quot;')}">${name}</span>
             <span class="tt-engineer">${eng}</span>
-            <span class="tt-days" style="color:${color}">${days}</span>
+            <span class="tt-days" style="color:${itemColor}">${days}</span>
         </div>`;
     }).join('')}</div>`;
 }
@@ -1839,11 +2018,16 @@ function renderATAChart() {
 
     const ataCounts = {};
     for (const item of filteredData) {
-        const ata = item.ata || '未知';
-        ataCounts[ata] = (ataCounts[ata] || 0) + 1;
+        const atas = item._atas.length > 0 ? item._atas : ['未知'];
+        for (const ata of atas) {
+            ataCounts[ata] = (ataCounts[ata] || 0) + 1;
+        }
     }
 
     let entries = Object.entries(ataCounts).sort((a, b) => b[1] - a[1]);
+    const ataTotal = entries.reduce((sum, e) => sum + e[1], 0);
+    const ataCountEl = document.getElementById('ata-all-count');
+    if (ataCountEl) ataCountEl.textContent = `${ataTotal}项`;
     const maxItems = 20;
     if (entries.length > maxItems) entries = entries.slice(0, maxItems);
 
@@ -1921,11 +2105,16 @@ function renderATAChartByFleet(fleetKeyword) {
 
     const ataCounts = {};
     for (const item of fleetData) {
-        const ata = item.ata || '未知';
-        ataCounts[ata] = (ataCounts[ata] || 0) + 1;
+        const atas = item._atas.length > 0 ? item._atas : ['未知'];
+        for (const ata of atas) {
+            ataCounts[ata] = (ataCounts[ata] || 0) + 1;
+        }
     }
 
     let entries = Object.entries(ataCounts).sort((a, b) => b[1] - a[1]);
+    const ataTotal = entries.reduce((sum, e) => sum + e[1], 0);
+    const ataCountEl = document.getElementById(fleetKeyword === '350' ? 'ata350-count' : 'ata330-count');
+    if (ataCountEl) ataCountEl.textContent = `${ataTotal}项`;
     const maxItems = 20;
     if (entries.length > maxItems) entries = entries.slice(0, maxItems);
 
@@ -2197,6 +2386,9 @@ function renderMonthlyTrendChart() {
     if (monthlyTrendChartInstance) { monthlyTrendChartInstance.destroy(); monthlyTrendChartInstance = null; }
 
     const labels = months.map(m => m.label);
+    const totalCount = months.reduce((sum, m) => sum + m.total, 0);
+    const countEl = document.getElementById('mt-all-count');
+    if (countEl) countEl.textContent = `${totalCount}项`;
 
     monthlyTrendChartInstance = new Chart(canvas, {
         type: 'line',
@@ -2310,6 +2502,9 @@ function renderMonthlyTrendChartByFleet(fleetKeyword) {
     }
 
     const labels = months.map(m => m.label);
+    const totalCount = months.reduce((sum, m) => sum + m.total, 0);
+    const countEl = document.getElementById(fleetKeyword === '350' ? 'mt350-count' : 'mt330-count');
+    if (countEl) countEl.textContent = `${totalCount}项`;
     const color = fleetKeyword === '350' ? '#8b5cf6' : '#06b6d4';
 
     const chart = new Chart(canvas, {
@@ -2514,6 +2709,13 @@ function scrollToZone(key) {
     const zone = document.getElementById(`zone-${key}`);
     if (zone) {
         zone.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+function scrollToZones() {
+    const container = document.getElementById('zones-container');
+    if (container) {
+        container.scrollIntoView({ behavior: 'smooth' });
     }
 }
 
@@ -2858,7 +3060,10 @@ async function resetToUpload() {
 // ATA PIE CHART MODAL
 // ============================================================
 function showATAPieChart(ataChapter, fleetKeyword) {
-    let items = filteredData.filter(d => String(d.ata || '未知').trim() === String(ataChapter).trim());
+    let items = filteredData.filter(d => d._atas.includes(String(ataChapter).trim()));
+    if (items.length === 0) {
+        items = filteredData.filter(d => String(d.ata || '未知').trim() === String(ataChapter).trim());
+    }
     if (fleetKeyword) {
         items = items.filter(d => String(d.fleet).includes(fleetKeyword));
     }
@@ -3026,9 +3231,11 @@ function showTodoBoard() {
 function setupTodoEngineerFilter() {
     const todoItems = filteredData.filter(d => hasVal(d.wg_tracking));
     const engineers = new Set();
+    const engCounts = {};
     for (const item of todoItems) {
         for (const eng of item._tmc_engineers) {
             engineers.add(eng);
+            engCounts[eng] = (engCounts[eng] || 0) + 1;
         }
     }
     const engList = [...engineers].sort();
@@ -3037,9 +3244,11 @@ function setupTodoEngineerFilter() {
     let html = '';
     for (const eng of engList) {
         const checked = todoEngineerFilter.includes(eng) ? 'checked' : '';
+        const cnt = engCounts[eng] || 0;
         html += `<label class="dropdown-option" onclick="event.stopPropagation()">
             <input type="checkbox" value="${eng}" ${checked} onchange="onTodoEngineerFilterChange()">
             <span class="text-sm truncate">${eng}</span>
+            <span class="filter-count">${cnt}</span>
         </label>`;
     }
     options.innerHTML = html;
@@ -3109,7 +3318,7 @@ function renderTodoTable() {
         for (const item of todoItems) {
             const row = document.createElement('div');
             row.className = 'grid border-b border-gray-100 hover:bg-gray-50 transition cursor-pointer';
-            row.style.cssText = 'grid-template-columns:40% 40% 20%';
+            row.style.cssText = 'grid-template-columns:28% 60% 12%';
             row.onclick = () => { cameFromTodoBoard = true; closeTodoModal(); showDetail(item._index); };
 
             const desCell = document.createElement('div');
@@ -3125,9 +3334,6 @@ function renderTodoTable() {
                 badge.className = 'text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 border border-purple-200 font-medium';
                 badge.textContent = label;
                 wgCell.appendChild(badge);
-                const sep = document.createElement('span');
-                sep.className = 'inline-block w-2';
-                wgCell.appendChild(sep);
             }
 
             const relLabel = item._reliabilityLabel;
@@ -3136,9 +3342,10 @@ function renderTodoTable() {
                 rbadge.className = 'text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700 border border-green-200 font-medium';
                 rbadge.textContent = relLabel;
                 wgCell.appendChild(rbadge);
-                const rsep = document.createElement('span');
-                rsep.className = 'inline-block w-2';
-                wgCell.appendChild(rsep);
+            }
+
+            if (label || relLabel) {
+                wgCell.appendChild(document.createElement('br'));
             }
 
             const wgText = document.createElement('span');
